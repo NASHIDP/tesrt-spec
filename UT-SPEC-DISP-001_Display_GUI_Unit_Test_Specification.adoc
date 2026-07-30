@@ -356,10 +356,7 @@ CUT: `Screen1View` (progress-loader driven auto-navigation to Screen 2).
 |Automatic navigation to Screen 2 occurs (`gotoScreen2ScreenNoTransition()`), and `isValidating` resets to `false`.
 |B
 
-|UT-DISP-S1-005
-|Sample `tickCounter` at `TOTAL_TICKS - 1`.
-|No navigation has occurred yet — confirms the transition boundary is exact, not early.
-|A
+
 
 |===
 
