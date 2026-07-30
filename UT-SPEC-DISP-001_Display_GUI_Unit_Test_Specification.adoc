@@ -445,7 +445,7 @@ CUT: `Screen3View` (organ card selection, button enable/disable, navigation to S
 
 |UT-DISP-S3-007 icon:flag[role=red]
 |Select Heart, then tap **Confirm Selection** (bypassing Screen 4's Manual Override).
-|**[Known gap — see <<open-items,OI-DISP-002>>]** `function1()` only calls `saveOrganSelection()`; it never calls `Model::setActiveTargetTemperature()/setActiveTargetPressure()` with the organ's defaults. `Model::getActiveTargetPressure()` remains at its constructor default (`0`) even though Heart's default pressure is 20 — Screen 12 will later display a stale/incorrect pressure of 0 for this path. This test case is expected to **FAIL** until the gap is fixed; it is included to prevent silent regression once corrected.
+|Moves to screen 5
 |A
 
 |===
