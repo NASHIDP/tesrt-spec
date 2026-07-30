@@ -30,7 +30,7 @@
 
 == Purpose
 
-This document defines the unit-level test specification for the Display GUI module of the OrgPort Riverdi HMI node (Node 0x06), implemented in TouchGFX. It follows the same structure and rigour as the sibling middleware specification <<UT-SPEC-MW-001>>, adapted to a GUI/MVP (Model-View-Presenter) codebase rather than a hardware-abstraction middleware codebase.
+This document defines the unit-level test specification for the Display GUI module of the OrgPort Riverdi HMI node (Node 0x06), implemented in TouchGFX.
 
 The purpose is to verify that:
 
