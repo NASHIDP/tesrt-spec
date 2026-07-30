@@ -51,8 +51,8 @@ This specification covers white-box and black-box unit tests for:
 
 It does **not** cover:
 
-* Rendering correctness of the `gui_generated` Designer-generated base classes (`*ViewBase.cpp`) — these are treated as trusted, tool-generated code, analogous to how <<UT-SPEC-MW-001>> excludes FreeRTOS kernel correctness.
-* EVE/BT817 coprocessor driver behaviour, SPI/display bring-up, or touch-controller correctness — covered by the Riverdi middleware test specification (not yet written; see <<open-items>>).
+
+* EVE/BT817 coprocessor driver behaviour, SPI/display bring-up, or touch-controller correctness — covered by the Riverdi middleware test specification.
 * CANopen RPDO/SDO integration between the Riverdi node and the S32K312 node — covered by the Integration Test Specification and by `CIOET-ORGPORT-SWRS-RVD-2026-001`.
 * Third-party component internals: `Keyboard` is attributed to a third-party author (CodeDog, 2024) in its file header; only the integration points used by this project (`edit()`, `targets()`, `toUTF8()`, caps-lock, backspace) are tested, not the full QWERTY layout engine.
 
