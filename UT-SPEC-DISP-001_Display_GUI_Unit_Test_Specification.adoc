@@ -98,26 +98,7 @@ It does **not** cover:
 |MVP
 |Model-View-Presenter — the TouchGFX application architecture pattern used in `gui/`
 
-|View
-|Screen-specific class owning widgets, tick handling, and navigation calls (`application().gotoScreenNScreenNoTransition()`)
 
-|Presenter
-|Thin mediator between a `View` and the `Model`; implements `ModelListener`
-
-|Model
-|Singleton data store (`gui/src/model/Model.cpp`) holding organ selection, active targets, and session metadata
-
-|Wildcard buffer
-|A local `Unicode::UnicodeChar[]` array bound to a TouchGFX `TextArea`/`FlexButton` via `setWildcard()`, formatted with `Unicode::snprintf()`
-
-|Editable
-|TouchGFX helper binding an on-screen `Keyboard` instance to a target text buffer for free-text entry (used on Screen 8)
-
-|FlexButton
-|Reusable TouchGFX button widget supporting dynamic colour/border/touchable state
-
-|Simulator
-|The TouchGFX x86 host build (Visual Studio / GCC), used to exercise logic without target hardware
 
 |TC
 |Test Case
