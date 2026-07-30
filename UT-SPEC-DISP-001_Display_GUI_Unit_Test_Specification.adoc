@@ -80,11 +80,6 @@ It does **not** cover:
 |CIOET-ORGPORT-SWRS-RVD-2026-001
 |OrgPort SWRS — Riverdi HMI Node (Node 0x06)
 
-|[[UT-SPEC-MW-001]] UT-SPEC-MW-001
-|Unit Test Specification — Middleware Modules (mw_osif, mw_gpio, mw_wdg) — sibling document, format reference for this specification
-
-|MW-DESIGN-001
-|Middleware Design Document (referenced for future Riverdi middleware tests)
 
 |===
 
