@@ -369,31 +369,36 @@ CUT: `Screen2View` (6-digit PIN buffer, no validation against a stored credentia
 |Test ID |Objective / Steps |Expected Result |Lane
 
 |UT-DISP-S2-001
+|Tap the Enter Pin Button 
+|makes the pinPadModal container visible
+|A
+
+|UT-DISP-S2-002
 |Press digits `1`-`6` in sequence via `btn1Clicked()` … `btn6Clicked()`.
 |`pinBuffer` accumulates `{1,2,3,4,5,6}`; `pinLength == 6`; circle indicators show 6 filled dots.
 |A
 
-|UT-DISP-S2-002
+|UT-DISP-S2-003
 |With `pinLength == 6`, press a 7th digit.
 |`handleNumberPressed()`'s `pinLength < 6` guard rejects the input; buffer and indicator remain unchanged (overflow protection).
 |A
 
-|UT-DISP-S2-003
+|UT-DISP-S2-004
 |Call `handleDelPressed()` on an empty buffer (`pinLength == 0`).
 |No-op — `pinLength` does not underflow below 0.
 |A
 
-|UT-DISP-S2-004
+|UT-DISP-S2-005
 |Enter 5 digits, then call `handleOkPressed()`.
 |No navigation occurs — `pinLength == 6` is required before `handleOkPressed()` calls `gotoScreen3ScreenNoTransition()`.
 |A
 
-|UT-DISP-S2-005
+|UT-DISP-S2-006
 |Enter exactly 6 digits, then call `handleOkPressed()`.
 |Navigates to Screen 3.
 |B
 
-|UT-DISP-S2-006
+|UT-DISP-S2-007
 |Enter 4 digits, delete 2, enter 3 more, and check `updateCircleIndicators()` after each step.
 |Filled-indicator count always matches the live `pinLength` value, never lagging or double-counting.
 |A
