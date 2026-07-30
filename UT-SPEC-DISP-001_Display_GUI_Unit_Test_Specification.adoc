@@ -702,7 +702,7 @@ CUT: `Screen9View` (Hypothermic / Dynamic / Static selection; branches navigatio
 
 |UT-DISP-S9-006 icon:flag[role=red]
 |With no mode selected (`currentSelection == NONE`), tap Confirm/Continue.
-|`savePreservationMode(PRESERVATION_NONE)` is called, but the `switch` statement's `default` branch has **no navigation call** — screen does not advance. **[See <<open-items,OI-DISP-004>>]**: confirm whether this "silently do nothing" behaviour is the intended UX, or whether a validation message should be shown.
+|`savePreservationMode(PRESERVATION_NONE)` is called, but the `switch` statement's `default` branch has **no navigation call** — screen does not advance.
 |A
 
 |===
