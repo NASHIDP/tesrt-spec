@@ -158,7 +158,7 @@ A test case passes when *all* expected results stated for each step are met with
 [[automated-test-execution-procedure]]
 === Test Execution Procedure
 
-Two execution lanes are used, mirroring the Automated/Manual split in <<UT-SPEC-MW-001>>, adapted for a GUI codebase where most CUTs are tightly coupled to TouchGFX widgets:
+Two execution lanes are used,adapted for a GUI codebase where most CUTs are tightly coupled to TouchGFX widgets:
 
 **Lane A — Automated (Host, logic-only).**
 Test cases whose CUT is pure C++ logic with no widget rendering dependency (e.g. `Model` getters/setters, PIN-buffer arithmetic, temperature/volume boundary clamps, alarm-sequencing counters) are extracted into a Unity test binary that links the relevant `.cpp` file(s) directly, stubbing only `touchgfx::*` calls that the logic path does not need. All Lane A cases for a given screen/module are run in a single Unity binary execution; one console log is captured as evidence for that module's Lane A cases.
