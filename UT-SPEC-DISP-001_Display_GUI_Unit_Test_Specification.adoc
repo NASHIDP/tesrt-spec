@@ -1,0 +1,1314 @@
+= Unit Test Specification - Display GUI Module (TouchGFX)
+:doctype: article
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 4
+:icons: font
+:source-highlighter: rouge
+:imagesdir: images
+:revnumber: 0.1
+:revdate: 2026-07-30
+
+:author: CIOET Firmware Team
+:email: shanid@htic.iitm.ac.in
+:docref: UT-SPEC-DISP-001
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Document Control Table
+// ─────────────────────────────────────────────────────────────────────────────
+
+[cols="1,1,2,2,2", options="header"]
+|===
+|Version |Date       |Author  |Reviewer  |Change Summary
+
+|0.1     |2026-07-30 |Shanid  |TBD       |Initial draft, covers all 18 TouchGFX screens + Model + shared containers
+
+|===
+
+---
+
+== Purpose
+
+This document defines the unit-level test specification for the Display GUI module of the OrgPort Riverdi HMI node (Node 0x06), implemented in TouchGFX. It follows the same structure and rigour as the sibling middleware specification <<UT-SPEC-MW-001>>, adapted to a GUI/MVP (Model-View-Presenter) codebase rather than a hardware-abstraction middleware codebase.
+
+The purpose is to verify that:
+
+* the `Model` singleton stores, truncates, and returns data correctly;
+* each screen's `View` logic (state machines, boundary clamping, colour/threshold rules, navigation) behaves correctly under nominal, boundary, and fault-injection conditions;
+* screen-to-screen navigation matches the intended workflow; and
+* shared containers (`TopStatusBar`, `AlarmMessageTemplate`, `Keyboard`) behave correctly across all screens that use them.
+
+This specification covers **all 18 screens** currently present in the `display/gui` project (`screen1_screen` … `screen18_screen`), the `Model`/`ModelListener` data layer, and the three reusable containers.
+
+== Scope
+
+This specification covers white-box and black-box unit tests for:
+
+* `gui/src/model/Model.cpp` (data layer)
+* `gui/src/containers/TopStatusBar.cpp`, `AlarmMessageTemplate.cpp`, `Keyboard.cpp`
+* `gui/src/screen1_screen` through `gui/src/screen18_screen` (View + Presenter logic only)
+
+It does **not** cover:
+
+* Rendering correctness of the `gui_generated` Designer-generated base classes (`*ViewBase.cpp`) — these are treated as trusted, tool-generated code, analogous to how <<UT-SPEC-MW-001>> excludes FreeRTOS kernel correctness.
+* EVE/BT817 coprocessor driver behaviour, SPI/display bring-up, or touch-controller correctness — covered by the Riverdi middleware test specification (not yet written; see <<open-items>>).
+* CANopen RPDO/SDO integration between the Riverdi node and the S32K312 node — covered by the Integration Test Specification and by `CIOET-ORGPORT-SWRS-RVD-2026-001`.
+* Third-party component internals: `Keyboard` is attributed to a third-party author (CodeDog, 2024) in its file header; only the integration points used by this project (`edit()`, `targets()`, `toUTF8()`, caps-lock, backspace) are tested, not the full QWERTY layout engine.
+
+== Applicable Documents and Standards
+
+[cols="1,3", options="header"]
+|===
+|Reference |Title
+
+|IEC 62304:2006+AMD1:2015
+|Medical device software — Software life cycle processes
+
+|IEC 60601-1:2005+AMD1+AMD2
+|Medical electrical equipment — General requirements for basic safety
+
+|IEC 62366-1:2015
+|Medical devices — Application of usability engineering to medical devices
+
+|ISO 14971:2019
+|Application of risk management to medical devices
+
+|CIOET-ORGPORT-SWRS-2026-001
+|OrgPort SWRS Master
+
+|CIOET-ORGPORT-SWRS-RVD-2026-001
+|OrgPort SWRS — Riverdi HMI Node (Node 0x06)
+
+|[[UT-SPEC-MW-001]] UT-SPEC-MW-001
+|Unit Test Specification — Middleware Modules (mw_osif, mw_gpio, mw_wdg) — sibling document, format reference for this specification
+
+|MW-DESIGN-001
+|Middleware Design Document (referenced for future Riverdi middleware tests)
+
+|===
+
+== Definitions and Abbreviations
+
+[cols="1,3", options="header"]
+|===
+|Term |Definition
+
+|CUT
+|Code Under Test — the specific View, Presenter, or Model method being exercised
+
+|DUT
+|Device Under Test — for this spec, the TouchGFX x86 Simulator build (host) or the Riverdi target board (on-target)
+
+|MVP
+|Model-View-Presenter — the TouchGFX application architecture pattern used in `gui/`
+
+|View
+|Screen-specific class owning widgets, tick handling, and navigation calls (`application().gotoScreenNScreenNoTransition()`)
+
+|Presenter
+|Thin mediator between a `View` and the `Model`; implements `ModelListener`
+
+|Model
+|Singleton data store (`gui/src/model/Model.cpp`) holding organ selection, active targets, and session metadata
+
+|Wildcard buffer
+|A local `Unicode::UnicodeChar[]` array bound to a TouchGFX `TextArea`/`FlexButton` via `setWildcard()`, formatted with `Unicode::snprintf()`
+
+|Editable
+|TouchGFX helper binding an on-screen `Keyboard` instance to a target text buffer for free-text entry (used on Screen 8)
+
+|FlexButton
+|Reusable TouchGFX button widget supporting dynamic colour/border/touchable state
+
+|Simulator
+|The TouchGFX x86 host build (Visual Studio / GCC), used to exercise logic without target hardware
+
+|TC
+|Test Case
+
+|===
+
+== Test Environment
+
+=== Hardware
+
+[cols="1,3", options="header"]
+|===
+|Item |Description
+
+|DUT (target)
+|Riverdi HMI module (STM32 MCU, EVE BT817 coprocessor, 7" capacitive touch display) per `CIOET-ORGPORT-SWRS-RVD-2026-001`
+
+|DUT (host)
+|Development PC running the TouchGFX x86 Simulator build of `display/` — no target hardware required for logic-only test cases
+
+|Debug Probe
+|ST-Link or compatible SWD probe (target-only test cases)
+
+|===
+
+=== Software and Toolchain
+
+[cols="1,3", options="header"]
+|===
+|Item |Description
+
+|IDE / Designer
+|TouchGFX Designer + STM32CubeIDE (version to be recorded once pinned — see <<open-items>>)
+
+|Simulator build
+|`display/gui` and `display/gui_generated` compiled as the TouchGFX x86 Simulator executable
+
+|Unit Test Framework
+|Unity (host build, linked against extracted logic where a View/Model method has no direct TouchGFX widget dependency); manual simulator walkthrough otherwise
+
+|Target Compiler
+|GCC ARM (arm-none-eabi-gcc), per Riverdi middleware toolchain once finalised
+
+|===
+
+=== General Preconditions (apply to all test cases unless overridden)
+
+. The Simulator (or target board) is freshly restarted before each test suite execution, so `Model::Model()` runs its default-constructor initialisation (`selectedOrgan = ORGAN_NONE`, `activeTargetTemperature = 8`, `activeTargetPressure = 0`, all string buffers empty).
+. Screen navigation starts from Screen 1 (Startup) unless a test case states it starts from a specific screen — reaching later screens in isolation requires either replaying the preceding screens or a debug jump (`application().gotoScreenNScreenNoTransition()` called directly from a test harness).
+. All wildcard buffers are in their designer-default (unformatted) state at the start of each screen's `setupScreen()` unless stated otherwise.
+. Test results are recorded in the Test Execution Report (document TER-DISP-001, to be created).
+
+=== Pass / Fail Criteria
+
+A test case passes when *all* expected results stated for each step are met with no deviation. Any single deviation constitutes a failure and must be recorded with an incident report reference.
+
+[[automated-test-execution-procedure]]
+=== Test Execution Procedure
+
+Two execution lanes are used, mirroring the Automated/Manual split in <<UT-SPEC-MW-001>>, adapted for a GUI codebase where most CUTs are tightly coupled to TouchGFX widgets:
+
+**Lane A — Automated (Host, logic-only).**
+Test cases whose CUT is pure C++ logic with no widget rendering dependency (e.g. `Model` getters/setters, PIN-buffer arithmetic, temperature/volume boundary clamps, alarm-sequencing counters) are extracted into a Unity test binary that links the relevant `.cpp` file(s) directly, stubbing only `touchgfx::*` calls that the logic path does not need. All Lane A cases for a given screen/module are run in a single Unity binary execution; one console log is captured as evidence for that module's Lane A cases.
+
+**Lane B — Manual (Simulator or Target).**
+Test cases whose CUT includes widget visibility, colour, invalidate(), or touch-input dispatch are executed by hand:
+
+. Launch the TouchGFX x86 Simulator (or flash the target board).
+. Navigate to the screen under test by replaying the preceding screens (see <<general-preconditions>> above), or by using a debug build with a screen-jump menu if available.
+. Perform the interaction described in the test case's Test Steps.
+. Visually confirm the Expected Result (widget visibility, text content, colour, transition target).
+. Record Pass/Fail and, for target-only cases, capture a photo or logic-analyser trace as evidence.
+
+Each test case below states its Lane (**A** or **B**) in the Execution column of the Test Traceability Matrix.
+
+---
+
+== Module: Model — Data Layer
+
+=== Overview
+
+`Model` is a singleton (`Model::getInstance()`) that stores organ selection, active target temperature/pressure, preservation mode, six fixed-size string fields (organ ID, weight, harvest hospital, destination institution, blood type, cross-clamp time), and the final elapsed-time snapshot used on the Transport Summary screen. All string setters use `std::strncpy` into fixed buffers and manually null-terminate the last byte.
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-MDL-001
+|Call `Model::getOrganDefaults(ORGAN_HEART)`.
+|Returns `{temperature: 8, pressure: 20}`.
+|A
+
+|UT-DISP-MDL-002
+|Call `Model::getOrganDefaults(ORGAN_LIVER)`.
+|Returns `{temperature: 8, pressure: 3}`.
+|A
+
+|UT-DISP-MDL-003
+|Call `Model::getOrganDefaults(ORGAN_KIDNEY)`.
+|Returns `{temperature: 8, pressure: 20}`.
+|A
+
+|UT-DISP-MDL-004
+|Call `Model::getOrganDefaults(ORGAN_NONE)`.
+|Returns `{temperature: 0, pressure: 0}`.
+|A
+
+|UT-DISP-MDL-005
+|Call `setOrganID()` with a 40-character string (buffer is `char[32]`).
+|`storedOrganID` holds exactly 31 characters plus a null terminator at index 31; no buffer overrun.
+|A
+
+|UT-DISP-MDL-006
+|Call `setHarvestHospital()` / `setDestinationInstitution()` with a 100-character string (buffer is `char[64]`).
+|Stored value is truncated to 63 characters + null terminator; no overrun.
+|A
+
+|UT-DISP-MDL-007
+|Call `setBloodType()` with a 12-character string (buffer is `char[8]`).
+|Stored value is truncated to 7 characters + null terminator.
+|A
+
+|UT-DISP-MDL-008
+|Construct `Model`, then call `Model::getInstance()`.
+|Returns a pointer to the same instance just constructed (singleton pointer correctly latched in the constructor).
+|A
+
+|UT-DISP-MDL-009
+|Immediately after construction, read `getActiveTargetTemperature()` and `getActiveTargetPressure()` without any screen having called a setter.
+|Returns `8` and `0` respectively — this is the default-construction baseline referenced by <<open-items,OI-DISP-002>>.
+|A
+
+|UT-DISP-MDL-010
+|Call `saveFinalElapsedTime(2, 34, 17)`, then call `getFinalHours()`, `getFinalMinutes()`, `getFinalSeconds()`.
+|Returns `2`, `34`, `17` exactly.
+|A
+
+|===
+
+---
+
+== Module: Shared Containers
+
+=== TopStatusBar
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-TSB-001
+|Call `setScreenTitle("Preservation Mode")` on any screen's `topStatusBarN`.
+|Title text buffer is updated and the title widget is invalidated; displayed text reads exactly "Preservation Mode".
+|B
+
+|UT-DISP-TSB-002
+|Call `setScreenTitle("")` (as done by Screen 7 entering `STAGE_3_SUCCESS`).
+|Title bar renders completely blank, no leftover characters from a previous title.
+|B
+
+|UT-DISP-TSB-003
+|Call `handleTickEvent()` when `touchgfx::Application::getInstance()` would return `nullptr` (simulated via a host stub).
+|Function returns immediately without dereferencing a null pointer; no crash.
+|A
+
+|UT-DISP-TSB-004
+|Toggle `FrontendApplication::isGpsModuleActive()` between `true`/`false` and call `handleTickEvent()`.
+|`gpsactive` is visible and `gpsinactive` hidden when `true`, and vice-versa when `false`; never both visible simultaneously.
+|B
+
+|===
+
+=== AlarmMessageTemplate
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-ALM-001
+|Call `setupAlarmCard("Battery Low Warning", "System backup battery power level has dropped below 15%!", COLOR_ORANGE)`.
+|Title/description buffers hold the exact strings; `boxSeverityStripe` colour is orange.
+|B
+
+|UT-DISP-ALM-002
+|Call `setupAlarmCard()` with a title longer than 31 characters.
+|Title buffer is truncated to 31 characters + null terminator; no overrun into adjacent memory.
+|A
+
+|UT-DISP-ALM-003
+|Call `setupAlarmCard()` with a description longer than 127 characters.
+|Description buffer is truncated to 127 characters + null terminator.
+|A
+
+|UT-DISP-ALM-004
+|Call `setupAlarmCard()` twice in sequence with different (shorter second) strings.
+|Second call's buffers contain only the second string's content, correctly null-terminated — no stale trailing characters from the first (longer) string.
+|A
+
+|===
+
+=== Keyboard (third-party component — integration points only)
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-KBD-001
+|From Screen 8, tap `btnOrganIDClicked()` to call `keyboard1.edit(editOrganID)`, then tap Apply with no characters typed.
+|Keyboard closes; `editOrganID` target buffer remains empty; `validateInputs()` keeps Continue disabled.
+|B
+
+|UT-DISP-KBD-002
+|Type a value, toggle Caps Lock, type another character.
+|Second character is upper-case; first is unaffected (case toggling applies only to subsequent input).
+|B
+
+|UT-DISP-KBD-003
+|Type several characters, press Backspace once.
+|Last character is removed from the edit buffer; caret position updates accordingly.
+|B
+
+|UT-DISP-KBD-004
+|Open the keyboard for `editOrganID`, type text, then tap `editCancel()`.
+|Keyboard closes; `valOrganID` is **not** updated (Cancel discards the edit, unlike Apply).
+|B
+
+|===
+
+---
+
+== Screen 1 — Startup / Self-Check
+
+CUT: `Screen1View` (progress-loader driven auto-navigation to Screen 2).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S1-001
+|Tap the Continue flex button.
+|`validationModal` becomes visible; `flexButton1` is hidden; `isValidating` becomes `true`.
+|B
+
+|UT-DISP-S1-002
+|After `continueButtonClicked()`, step `handleTickEvent()` repeatedly and sample `circleProgress1`'s value.
+|Progress value increases monotonically from 0 towards 100 in proportion to `tickCounter / TOTAL_TICKS`.
+|A
+
+|UT-DISP-S1-003
+|Continue stepping ticks past `TOTAL_TICKS`.
+|`progressValue` never exceeds 100 (the `<= 100` guard holds); no overflow past the visual maximum.
+|A
+
+|UT-DISP-S1-004
+|Step ticks until `tickCounter == TOTAL_TICKS` exactly.
+|Automatic navigation to Screen 2 occurs (`gotoScreen2ScreenNoTransition()`), and `isValidating` resets to `false`.
+|B
+
+|UT-DISP-S1-005
+|Sample `tickCounter` at `TOTAL_TICKS - 1`.
+|No navigation has occurred yet — confirms the transition boundary is exact, not early.
+|A
+
+|===
+
+== Screen 2 — Authentication (PIN Entry)
+
+CUT: `Screen2View` (6-digit PIN buffer, no validation against a stored credential — see <<open-items,OI-DISP-001>>).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S2-001
+|Press digits `1`-`6` in sequence via `btn1Clicked()` … `btn6Clicked()`.
+|`pinBuffer` accumulates `{1,2,3,4,5,6}`; `pinLength == 6`; circle indicators show 6 filled dots.
+|A
+
+|UT-DISP-S2-002
+|With `pinLength == 6`, press a 7th digit.
+|`handleNumberPressed()`'s `pinLength < 6` guard rejects the input; buffer and indicator remain unchanged (overflow protection).
+|A
+
+|UT-DISP-S2-003
+|Call `handleDelPressed()` on an empty buffer (`pinLength == 0`).
+|No-op — `pinLength` does not underflow below 0.
+|A
+
+|UT-DISP-S2-004
+|Enter 5 digits, then call `handleOkPressed()`.
+|No navigation occurs — `pinLength == 6` is required before `handleOkPressed()` calls `gotoScreen3ScreenNoTransition()`.
+|A
+
+|UT-DISP-S2-005
+|Enter exactly 6 digits, then call `handleOkPressed()`.
+|Navigates to Screen 3.
+|B
+
+|UT-DISP-S2-006
+|Enter 4 digits, delete 2, enter 3 more, and check `updateCircleIndicators()` after each step.
+|Filled-indicator count always matches the live `pinLength` value, never lagging or double-counting.
+|A
+
+|===
+
+== Screen 3 — Select Organ Type
+
+CUT: `Screen3View` (organ card selection, button enable/disable, navigation to Screen 4 or 5).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S3-001
+|Tap `cardHeart` (RELEASED event).
+|`borderHeart` becomes visible, `borderLiver`/`borderKidney` hidden; `tempBuffer`/`pressureBuffer` show Heart's defaults (8, 20); `presenter->saveOrganSelection(ORGAN_HEART)` is called.
+|B
+
+|UT-DISP-S3-002
+|On screen entry with no prior selection (`ORGAN_NONE`).
+|`btnConfirmSelection` and `btnChangeConfiguration` are not touchable and rendered at alpha 100 (faded).
+|B
+
+|UT-DISP-S3-003
+|Select any organ card.
+|Both buttons become touchable and render at alpha 255 (full opacity).
+|B
+
+|UT-DISP-S3-004
+|With an organ selected, tap Confirm Selection (`function1()`).
+|Navigates to Screen 5.
+|B
+
+|UT-DISP-S3-005
+|With an organ selected, tap Change Configuration.
+|Navigates to Screen 4.
+|B
+
+|UT-DISP-S3-006
+|With no organ selected, tap Change Configuration.
+|No navigation occurs (guarded by `getSavedOrgan() != ORGAN_NONE`).
+|A
+
+|UT-DISP-S3-007 icon:flag[role=red]
+|Select Heart, then tap **Confirm Selection** (bypassing Screen 4's Manual Override).
+|**[Known gap — see <<open-items,OI-DISP-002>>]** `function1()` only calls `saveOrganSelection()`; it never calls `Model::setActiveTargetTemperature()/setActiveTargetPressure()` with the organ's defaults. `Model::getActiveTargetPressure()` remains at its constructor default (`0`) even though Heart's default pressure is 20 — Screen 12 will later display a stale/incorrect pressure of 0 for this path. This test case is expected to **FAIL** until the gap is fixed; it is included to prevent silent regression once corrected.
+|A
+
+|===
+
+== Screen 4 — Manual Override (Temperature)
+
+CUT: `Screen4View` (0-15°C clamp, 5-band colour/status classification).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S4-001
+|From `currentTemperature = 15`, tap Plus.
+|Value stays at 15 (upper clamp holds, no increment past 15).
+|A
+
+|UT-DISP-S4-002
+|From `currentTemperature = 0`, tap Minus.
+|Value stays at 0 (lower clamp holds).
+|A
+
+|UT-DISP-S4-003
+|Set temperature to 0, 1, and 2 in turn.
+|Status text reads "Critical Cold", colour is red (`RGB(231,76,60)`) at every value in this band.
+|A
+
+|UT-DISP-S4-004
+|Set temperature to 3.
+|Status text reads "Caution", colour is orange (`RGB(230,126,34)`).
+|A
+
+|UT-DISP-S4-005
+|Set temperature to 4 and to 10 (band edges) and to 7 (mid-band).
+|Status text reads "Safe Zone", colour is green (`RGB(46,204,113)`) at all three values.
+|A
+
+|UT-DISP-S4-006
+|Set temperature to 11 and to 12.
+|Status text reads "Caution", colour is orange — confirms the *second* orange band is distinct from the band-3 case above.
+|A
+
+|UT-DISP-S4-007
+|Set temperature to 13, 14, and 15.
+|Status text reads "Critical Warm", colour is red.
+|A
+
+|UT-DISP-S4-008
+|Set temperature to any value, tap Confirm.
+|`presenter->saveManualTemperature()` writes the value into `Model::activeTargetTemperature`; navigates to Screen 5.
+|B
+
+|===
+
+== Screen 5 — Thermal Stabilization
+
+CUT: `Screen5View` (simulated cooling curve towards the Model's active target temperature).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S5-001
+|On `setupScreen()`, with `Model::activeTargetTemperature = 10`.
+|`targetTemperature` is read as 10 and displayed as "10.0" in `targetTempTextBuffer`.
+|B
+
+|UT-DISP-S5-002
+|Step `handleTickEvent()` while `currentTemperature > targetTemperature`.
+|`currentTemperature` decreases by 0.02°C per tick; never undershoots below `targetTemperature` (clamped exactly to target on the final step).
+|A
+
+|UT-DISP-S5-003
+|While `currentTemperature - targetTemperature > 2.0`.
+|Text/progress colour is red (far from target).
+|A
+
+|UT-DISP-S5-004
+|While `0 < currentTemperature - targetTemperature <= 2.0`.
+|Text/progress colour is orange (approaching).
+|A
+
+|UT-DISP-S5-005
+|Once `currentTemperature <= targetTemperature`.
+|Text/progress colour is green; `ContinueButton` becomes visible (only once, not re-invalidated every tick once already visible).
+|B
+
+|UT-DISP-S5-006
+|Feed `currentTemperature` values at 0°C and 25°C into the progress-percentage formula.
+|Progress ring reads 0% and 100% respectively; values outside 0-25°C are clamped to the 0-100% range.
+|A
+
+|UT-DISP-S5-007
+|Tap Continue once visible.
+|Navigates to Screen 6.
+|B
+
+|===
+
+== Screen 6 — Reservoir Fill
+
+CUT: `Screen6View` (simulated fill towards `targetVolume = 1000` mL).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S6-001
+|Step `handleTickEvent()` from `currentVolume = 0`.
+|Volume increases by 2 mL per tick; UI colour is blue while `currentVolume < 1000`.
+|A
+
+|UT-DISP-S6-002
+|Step ticks until `currentVolume` would exceed 1000.
+|Value clamps exactly to 1000 (no overshoot past `targetVolume`).
+|A
+
+|UT-DISP-S6-003
+|On reaching 1000 mL.
+|Status text switches to "Fill Complete" / "Reservoir Fill Complete"; colour switches to green; `ContinueButton` becomes visible.
+|B
+
+|UT-DISP-S6-004
+|Tap Continue once visible.
+|Navigates to Screen 7.
+|B
+
+|===
+
+== Screen 7 — Priming / Bubble Detection (2-Stage)
+
+CUT: `Screen7View` (Stage 1 Priming: 2×60 s cycles; Stage 2 Bubble Detection: 2×10 s cycles; Stage 3 Success).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S7-001
+|On `setupScreen()`.
+|`initStage(STAGE_1_PRIMING)` runs; title reads "Stage 1-Priming"; `secondsRemaining = 60`; cycle text reads "1 / 2".
+|B
+
+|UT-DISP-S7-002
+|Step exactly 60 ticks (`tickCounter` reaches 60).
+|`handleStageTimers()` fires once; `secondsRemaining` decrements by exactly 1; countdown text updates (e.g. "00:59").
+|A
+
+|UT-DISP-S7-003
+|Run Stage 1 Cycle 1 down to `secondsRemaining == 0`.
+|Advances to Cycle 2, resets `secondsRemaining = 60`; cycle text reads "2 / 2".
+|A
+
+|UT-DISP-S7-004
+|Run Stage 1 Cycle 2 down to `secondsRemaining == 0`.
+|`initStage(STAGE_2_BUBBLE_DETECTION)` runs; title reads "Stage 2-Bubble Detection"; `secondsRemaining` resets to 10; `currentCycle` resets to 1.
+|A
+
+|UT-DISP-S7-005
+|Run both 10 s cycles of Stage 2 to completion.
+|`initStage(STAGE_3_SUCCESS)` runs; title is set to `""` (blank, per design); `stage3SuccessWidget1` becomes visible, the other two stage widgets hidden.
+|B
+
+|UT-DISP-S7-006
+|Once in `STAGE_3_SUCCESS`, continue stepping `handleTickEvent()`.
+|`tickCounter`/timers no longer advance (early `return` guard) — the success screen does not silently roll over into a new stage.
+|A
+
+|UT-DISP-S7-007
+|Progress ring value at various points within a 60 s Priming cycle.
+|`progressPercent` tracks `elapsedSeconds / totalDuration * 100` and reaches ~100% just before the cycle rolls over.
+|A
+
+|UT-DISP-S7-008
+|From Stage 3, tap Continue.
+|Navigates to Screen 8.
+|B
+
+|===
+
+== Screen 8 — Organ Details (Free-Text Entry)
+
+CUT: `Screen8View` (six `Editable` fields wired to the shared `Keyboard`; `validateInputs()` gate on Continue).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S8-001
+|On screen entry, before any field is filled.
+|`ContinueButton` is not touchable, rendered at alpha 100.
+|B
+
+|UT-DISP-S8-002
+|Fill Organ ID, Weight, Harvest Hospital, and Blood Type, but leave Cross-Clamp Time at its "HH:MM" placeholder.
+|`isClampTimeValid` is `false` (buffer matches the placeholder string) — Continue remains disabled even though the other four fields are filled.
+|A
+
+|UT-DISP-S8-003
+|Fill all five required fields plus a Cross-Clamp Time different from "HH:MM".
+|`validateInputs()` returns `true`; `ContinueButton` becomes touchable at alpha 255.
+|B
+
+|UT-DISP-S8-004 icon:flag[role=orange]
+|Enter the literal text `HH:MM` as an intentional (if unusual) clamp time value.
+|**[Edge case — see <<open-items,OI-DISP-003>>]** `isClampTimeValid` evaluates `false` because the check compares the raw buffer against the placeholder string rather than tracking a separate "has been edited" flag — the literal string "HH:MM" can never be accepted as a valid clamp time. Document as a known limitation.
+|A
+
+|UT-DISP-S8-005
+|Tap `btnOrganIDClicked()`, type a 40-character Organ ID (Model buffer is 32 chars), tap Apply, then Continue.
+|`Model::storedOrganID` holds the truncated (31-char + null) value — confirms the full pipeline (Keyboard → `Editable` → UTF-8 conversion → `Model::setOrganID` `strncpy`) truncates safely with no overrun at any stage.
+|A
+
+|UT-DISP-S8-006
+|Open Keyboard for a field, type text, tap `editCancel()` instead of Apply.
+|The field's `val*` buffer is unchanged; Keyboard closes without saving.
+|B
+
+|UT-DISP-S8-007
+|Fill all fields validly, tap Continue.
+|`onContinueButtonClicked()` converts all six wildcard buffers to UTF-8, calls `presenter->saveOrganDataToModel()` with all six values, and navigates to Screen 9.
+|B
+
+|===
+
+== Screen 9 — Preservation Mode Selection
+
+CUT: `Screen9View` (Hypothermic / Dynamic / Static selection; branches navigation).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S9-001
+|Tap `btnHypothermicClicked()`.
+|`currentSelection = HYPOTHERMIC`; button renders green/white (selected style); other two buttons render charcoal/muted (unselected style).
+|B
+
+|UT-DISP-S9-002
+|Tap `btnDynamicClicked()` then `btnStaticClicked()`.
+|Selection state is mutually exclusive — only the most recently tapped button shows the selected style at any time.
+|B
+
+|UT-DISP-S9-003
+|With Hypothermic selected, tap Confirm/Continue.
+|`presenter->savePreservationMode(PRESERVATION_HYPOTHERMIC)` is called; navigates to **Screen 10** (Oxygenator Connection).
+|B
+
+|UT-DISP-S9-004
+|With Dynamic selected, tap Confirm/Continue.
+|`presenter->savePreservationMode(PRESERVATION_DYNAMIC)`; navigates to **Screen 12** (skips the oxygenator screens).
+|B
+
+|UT-DISP-S9-005
+|With Static selected, tap Confirm/Continue.
+|`presenter->savePreservationMode(PRESERVATION_STATIC)`; navigates to **Screen 12**.
+|B
+
+|UT-DISP-S9-006 icon:flag[role=red]
+|With no mode selected (`currentSelection == NONE`), tap Confirm/Continue.
+|`savePreservationMode(PRESERVATION_NONE)` is called, but the `switch` statement's `default` branch has **no navigation call** — screen does not advance. **[See <<open-items,OI-DISP-004>>]**: confirm whether this "silently do nothing" behaviour is the intended UX, or whether a validation message should be shown.
+|A
+
+|===
+
+== Screen 10 — Oxygenator Connection
+
+[IMPORTANT]
+====
+Per `CIOET-ORGPORT-SWRS-2026-001` §2.1 and `CIOET-ORGPORT-SWRS-RVD-2026-001` §2.1, *"Continuous Hypothermic Oxygenated Perfusion (HOPE) and oxygenator hardware"* / *"HOPE/oxygenator mode display screens"* are **explicitly out of scope for v0.0.x**. Screens 10 and 11 implement exactly this feature, reachable via the Hypothermic preservation-mode path from Screen 9. This is flagged in <<open-items,OI-DISP-005>> for Systems Engineering / SRS reconciliation before these test cases are formally executed against a released SWRS baseline.
+====
+
+CUT: `Screen10View` (simulated oxygenator-detection progress bar).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S10-001
+|On screen entry.
+|`progressOxygenator` starts at 0; `btnContinueNext` is hidden.
+|B
+
+|UT-DISP-S10-002
+|Step `handleTickEvent()` — progress increments once every 2 ticks.
+|`progressValue` increases by 1 every 2 ticks, reaching 100 after 200 ticks.
+|A
+
+|UT-DISP-S10-003
+|Once `progressValue >= 100`.
+|`isDetectionComplete` latches `true`; progress bar colour turns green; status text reads "Oxygenator Module Detected"; `btnContinueNext` becomes visible.
+|B
+
+|UT-DISP-S10-004
+|Continue stepping ticks after completion.
+|Logic returns early (`if (isDetectionComplete) return;`) — progress value and text do not change further.
+|A
+
+|===
+
+== Screen 11 — Oxygenator Priming
+
+(Subject to the same scope note as Screen 10 — see <<open-items,OI-DISP-005>>.)
+
+CUT: `Screen11View` (2×60 s deairing cycles, then a 1.5 s hold before auto-navigating).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S11-001
+|On screen entry.
+|Status text reads "Deairing in Progress..." in green; cycle text reads "1 / 2"; countdown reads "01:00".
+|B
+
+|UT-DISP-S11-002
+|Step 60 ticks (1 real second).
+|`totalSeconds` decrements by 1; countdown text and progress ring update accordingly.
+|A
+
+|UT-DISP-S11-003
+|Run Cycle 1 to `totalSeconds == 0`.
+|Advances to Cycle 2; `totalSeconds` resets to 60; progress ring resets to 0.
+|A
+
+|UT-DISP-S11-004
+|Run Cycle 2 to `totalSeconds == 0`.
+|`isComplete` latches `true`; status text switches to "Priming Complete"; `holdTimer` begins counting.
+|A
+
+|UT-DISP-S11-005
+|Step `holdTimer` to exactly 90 ticks (1.5 s at 60 fps) after completion.
+|Automatic navigation to Screen 12 occurs at tick 90, not before.
+|B
+
+|===
+
+== Screen 12 — Recommended Configuration
+
+CUT: `Screen12View` (read-only display of `Model::activeTargetTemperature/Pressure`).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S12-001
+|On `setupScreen()`, with `Model::activeTargetTemperature = 6`, `activeTargetPressure = 20`.
+|`tempBuffer` formats as "6.0"; `pressBuffer` formats as "20".
+|B
+
+|UT-DISP-S12-002 icon:flag[role=red]
+|Enter Screen 12 via the path Screen 3 (Confirm Selection, Heart) → 5 → … → 9 (Dynamic) → 12, i.e. **without** ever visiting Screen 4 or Screen 13.
+|**[Depends on OI-DISP-002]** `activeTargetPressure` still reads its constructor default of `0` rather than Heart's expected default of 20, because no screen on this path ever calls `setActiveTargetPressure()`. This test is the end-to-end confirmation of the Screen 3 gap and is expected to **FAIL** until fixed.
+|B
+
+|UT-DISP-S12-003
+|No navigation logic is present in `Screen12View.cpp` at all (no `goto*` call found).
+|**[See <<open-items,OI-DISP-006>>]** confirm whether Screen 12 is meant to be a dead-end summary/confirmation card wired only through a Designer-level interaction not yet present in the `.cpp`, or whether a Continue handler is still to be implemented.
+|A
+
+|===
+
+== Screen 13 — Advanced Manual Override
+
+CUT: `Screen13View` (temperature 0-20°C and pressure 0-100 mmHg clamps).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S13-001
+|From `currentTemperature = 20`, tap Temp Plus.
+|Value stays at 20 (upper clamp).
+|A
+
+|UT-DISP-S13-002
+|From `currentTemperature = 0`, tap Temp Minus.
+|Value stays at 0 (lower clamp).
+|A
+
+|UT-DISP-S13-003
+|From `currentPressure = 100`, tap Press Plus.
+|Value stays at 100 (upper clamp).
+|A
+
+|UT-DISP-S13-004
+|From `currentPressure = 0`, tap Press Minus.
+|Value stays at 0 (lower clamp).
+|A
+
+|UT-DISP-S13-005 icon:flag[role=orange]
+|Compare Screen 13's temperature range (0-20°C) against Screen 4's Manual Override range (0-15°C).
+|**[Inconsistency — see <<open-items,OI-DISP-007>>]** Two screens both labelled "Manual Override" clamp temperature to different maxima (15°C vs 20°C). Confirm with Systems Engineering which range is clinically correct and reconcile.
+|A
+
+|UT-DISP-S13-006
+|On entry, `presenter->getInitialTemperature()/getInitialPressure()` are read from the Model.
+|Displayed starting values match whatever was last stored in `Model::activeTargetTemperature/Pressure` (round-trip read-after-write with Screen 4 or a prior Screen 13 visit).
+|B
+
+|UT-DISP-S13-007
+|Adjust both values, tap Confirm.
+|`presenter->saveManualConfiguration(temp, press)` writes both fields to the Model; navigates to **Screen 14**.
+|B
+
+|===
+
+== Screen 14 — (Unimplemented Stub)
+
+[IMPORTANT]
+====
+`Screen14View.cpp` contains only `setupScreen()`/`tearDownScreen()`/`handleTickEvent()` boilerplate — no title, no widgets driven, and no outgoing navigation call. It is reachable from Screen 13's Confirm button but is currently a dead end. See <<open-items,OI-DISP-008>>.
+====
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S14-001
+|Navigate to Screen 14 via Screen 13's Confirm button.
+|Screen displays with no crash (baseline smoke test only — no functional behaviour exists yet to verify).
+|B
+
+|===
+
+== Screen 15 — Active Preservation (Dashboard)
+
+CUT: `Screen15View` — the largest and most stateful screen: elapsed-time tracking, DCS flush countdown, motor-status state machine, simulated alarm generation, and a battery-runtime overlay.
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S15-001
+|Step 60 ticks (1 s) with `isTimerActive == true`.
+|`elapsedSeconds` increments by 1; rolls to `elapsedMinutes` at 60, and to `elapsedHours` at 60 minutes.
+|A
+
+|UT-DISP-S15-002
+|With `preservationMode == PRESERVATION_DYNAMIC`, roll `elapsedHours` over.
+|`currentCycles` increments by exactly 1 per completed hour; does **not** increment for Hypothermic or Static modes.
+|A
+
+|UT-DISP-S15-003
+|With `preservationMode == PRESERVATION_DYNAMIC`, step the flush countdown from `55:00` down through `00:00`.
+|`flushMinutes`/`flushSeconds` count down correctly; on reaching `00:00`, resets back to `55:00` (matches the SWRS-M2-HMI-03 default DCS OFF-duration of 55 minutes).
+|A
+
+|UT-DISP-S15-004
+|Motor status with `preservationMode == PRESERVATION_HYPOTHERMIC`.
+|`bufferMotorStatus` reads "Running" (green) continuously.
+|A
+
+|UT-DISP-S15-005
+|Motor status with `preservationMode == PRESERVATION_DYNAMIC` at `elapsedMinutes == 55` vs. any other minute.
+|Reads "Running" (green) only at minute 55 of each hour; "Idle" (grey) at all other minutes.
+|A
+
+|UT-DISP-S15-006
+|Motor status with `preservationMode == PRESERVATION_STATIC` or `PRESERVATION_NONE`.
+|Always reads "Idle" (grey), regardless of elapsed time.
+|A
+
+|UT-DISP-S15-007
+|Step `alertSimulationTickCounter` to exactly 300 (5 s) three times in a row, with `isCriticalStateActive == false` throughout.
+|Three alarm cards are spawned in sequence, each titled "Battery Low Warning" with the orange severity stripe; `activeAlertCount` increments to 3.
+|A
+
+|UT-DISP-S15-008
+|Trigger a 4th simulated alarm event.
+|A "Pressure Critical" card (red stripe) is spawned; `containerCritical` becomes visible with matching title/description; `isCriticalStateActive` latches `true`.
+|B
+
+|UT-DISP-S15-009
+|Once `isCriticalStateActive == true`, continue stepping ticks for >5 more seconds.
+|No further alarms are generated (the alert-generation block is fully bypassed while critical); `bufferMotorStatus` forces "Idle" (grey) regardless of preservation mode.
+|A
+
+|UT-DISP-S15-010
+|Once `isCriticalStateActive == true`, tap `btnAcknowledgeCrClicked()`.
+|`containerCritical` is hidden, **but** `isCriticalStateActive` remains `true` by design (per in-code comment) — dashboard stays locked in the forced "Idle"/dash-marker visual state even after acknowledgement.
+|B
+
+|UT-DISP-S15-011
+|With `isCriticalStateActive == true` (or any non-Dynamic mode), read `bufferCycleNumber`/`bufferNextFlash`.
+|Both display `"--"` / `"--:--"` placeholder dashes rather than stale numeric values.
+|A
+
+|UT-DISP-S15-012
+|Sweep `simulatedBatteryLevel` across `100 → 96 → 95 → 50 → 16 → 15 → 0`.
+|Status text reads "Fully Charged" for `>=95`, "Discharging" for the mid-range, and "Battery Low" for `<=15` — confirms both threshold boundaries are inclusive on the correct side.
+|A
+
+|UT-DISP-S15-013
+|At `simulatedBatteryLevel = 100`.
+|Estimated runtime formula (`hours = level*8/100`, `minutes = (level*45/100)%60`) evaluates to "8 hr 15 mnt".
+|A
+
+|UT-DISP-S15-014
+|Tap `buttonBatteryClicked()`, then `buttongobackClicked()`.
+|Battery overlay opens then closes correctly; `buttongoback`'s full-screen invisible capture target is enabled only while the overlay is open.
+|B
+
+|UT-DISP-S15-015
+|Tap `endProcedureClicked()`.
+|`isTimerActive` latches `false` (all further ticks are no-ops); `presenter->storeProcedureDuration()` writes the frozen `elapsedHours/Minutes/Seconds` to the Model; navigates to Screen 16.
+|B
+
+|===
+
+== Screen 16 — Arrival Checklist
+
+CUT: `Screen16View` (3-step sequential checklist with cascading resets).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S16-001
+|On screen entry.
+|All three tick marks hidden; `buttonProceed` not touchable.
+|B
+
+|UT-DISP-S16-002
+|Tap Step 1.
+|`isStep1Completed` toggles `true`; tick mark 1 appears; button 1 renders green-bordered/selected text.
+|A
+
+|UT-DISP-S16-003
+|With Step 1 incomplete, tap Step 2.
+|No effect — `flexButtonStep2Clicked()` is gated on `isStep1Completed`; Step 2 state does not change.
+|A
+
+|UT-DISP-S16-004
+|With Steps 1 and 2 complete, tap Step 2 to un-toggle it.
+|`isStep2Completed` becomes `false`, **and** `isStep3Completed` is forcibly reset to `false` as well (cascading reset).
+|A
+
+|UT-DISP-S16-005
+|With Step 1 complete, tap Step 1 again to un-toggle it.
+|`isStep1Completed` becomes `false`, and **both** `isStep2Completed` and `isStep3Completed` cascade-reset to `false`.
+|A
+
+|UT-DISP-S16-006
+|With Step 2 incomplete, tap Step 3.
+|No effect — gated on `isStep2Completed`.
+|A
+
+|UT-DISP-S16-007
+|Complete Steps 1, 2, and 3 in strict order.
+|`buttonProceed` turns green and becomes touchable only once all three are `true` simultaneously.
+|B
+
+|UT-DISP-S16-008 icon:flag[role=red]
+|With all three steps complete, tap `buttonProceed`.
+|**[See <<open-items,OI-DISP-009>>]** No click handler (`buttonProceedClicked()` or similar) exists anywhere in `Screen16View.cpp` — the button becomes touchable but currently performs no action and does not navigate onward. Expected to **FAIL** until a handler and destination screen are implemented.
+|B
+
+|===
+
+== Screen 17 — Transport Summary
+
+CUT: `Screen17View` (post-session summary; loading animation then populated report).
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S17-001
+|On screen entry.
+|`loadingContainer` visible, `summaryScrollContainer` and `shutdownButton` hidden; `savingCircleProgress` starts at 0.
+|B
+
+|UT-DISP-S17-002
+|Step `handleTickEvent()` until `progressCounter` reaches 100.
+|Progress ring advances 1%/tick; at exactly 100, `showSummaryDashboard()` fires exactly once.
+|A
+
+|UT-DISP-S17-003
+|After `showSummaryDashboard()`.
+|`loadingContainer` hides; `summaryScrollContainer` and `shutdownButton` become visible.
+|B
+
+|UT-DISP-S17-004
+|With `Model::storedOrganID = "HRT-2026-0417"`, `storedOrganWeight = "310"`, `storedBloodType = "O+"`, `storedHarvestHospital = "Apollo Chennai"`.
+|`populateMockData()` correctly UTF-8-decodes and displays all four values on the summary screen, with weight formatted as `"310 g"`.
+|B
+
+|UT-DISP-S17-005
+|With `Model` final elapsed time `(2, 34, 17)`.
+|`totalPreservationTimeBuffer` reads `"2 h 34 min 17 sec"` exactly.
+|A
+
+|UT-DISP-S17-006 icon:flag[role=red]
+|Inspect the temperature, pressure, alarm-count, alarm-log, battery-swap-count, and battery-log fields populated by `populateMockData()`.
+|**[See <<open-items,OI-DISP-010>>]** All six of these fields are hard-coded placeholder strings (`"4.2 C"`, `"7.8 C"`, `"2"`, a fixed two-line alarm log, etc.) regardless of what actually happened during the session on Screens 15/16 — they are **not** computed from real telemetry or from the alarms generated on Screen 15. This test documents current (placeholder) behaviour so any future change to real aggregation logic is a deliberate, tracked change rather than a silent regression.
+|A
+
+|===
+
+== Screen 18 — (Unimplemented Stub)
+
+[IMPORTANT]
+====
+`Screen18View.cpp` contains only boilerplate, identical in shape to Screen 14 — no title, no widget logic, and (as far as could be determined) no inbound navigation call from any other screen in the current codebase. See <<open-items,OI-DISP-011>>.
+====
+
+[cols="1,3,1,1", options="header"]
+|===
+|Test ID |Objective / Steps |Expected Result |Lane
+
+|UT-DISP-S18-001
+|Force-navigate to Screen 18 via a debug jump.
+|Screen displays with no crash (baseline smoke test only).
+|B
+
+|===
+
+---
+
+== Test Traceability Matrix
+
+[cols="1,2,1,1", options="header"]
+|===
+|Test ID |Title |Requirement |Execution
+
+|UT-DISP-MDL-001 |Organ defaults — Heart |SW-REQ-DISP-MDL-001 |A
+|UT-DISP-MDL-002 |Organ defaults — Liver |SW-REQ-DISP-MDL-001 |A
+|UT-DISP-MDL-003 |Organ defaults — Kidney |SW-REQ-DISP-MDL-001 |A
+|UT-DISP-MDL-004 |Organ defaults — None |SW-REQ-DISP-MDL-001 |A
+|UT-DISP-MDL-005 |OrganID setter truncation |SW-REQ-DISP-MDL-002 |A
+|UT-DISP-MDL-006 |Hospital/Destination truncation |SW-REQ-DISP-MDL-002 |A
+|UT-DISP-MDL-007 |BloodType truncation |SW-REQ-DISP-MDL-002 |A
+|UT-DISP-MDL-008 |Singleton instance identity |SW-REQ-DISP-MDL-003 |A
+|UT-DISP-MDL-009 |Default active target values |SW-REQ-DISP-MDL-003 |A
+|UT-DISP-MDL-010 |Final elapsed time round-trip |SW-REQ-DISP-MDL-004 |A
+|UT-DISP-TSB-001 |setScreenTitle displays text |SW-REQ-DISP-TSB-001 |B
+|UT-DISP-TSB-002 |setScreenTitle("") blanks title |SW-REQ-DISP-TSB-001 |B
+|UT-DISP-TSB-003 |handleTickEvent null-app guard |SW-REQ-DISP-TSB-002 |A
+|UT-DISP-TSB-004 |GPS icon visibility toggle |SW-REQ-DISP-TSB-003 |B
+|UT-DISP-ALM-001 |setupAlarmCard content + colour |SW-REQ-DISP-ALM-001 |B
+|UT-DISP-ALM-002 |Title truncation |SW-REQ-DISP-ALM-002 |A
+|UT-DISP-ALM-003 |Description truncation |SW-REQ-DISP-ALM-002 |A
+|UT-DISP-ALM-004 |No stale content across calls |SW-REQ-DISP-ALM-003 |A
+|UT-DISP-KBD-001 |Apply with empty input |SW-REQ-DISP-KBD-001 |B
+|UT-DISP-KBD-002 |Caps lock affects subsequent input |SW-REQ-DISP-KBD-002 |B
+|UT-DISP-KBD-003 |Backspace removes last char |SW-REQ-DISP-KBD-002 |B
+|UT-DISP-KBD-004 |Cancel discards edit |SW-REQ-DISP-KBD-003 |B
+|UT-DISP-S1-001 |Continue reveals modal |SW-REQ-DISP-S1-001 |B
+|UT-DISP-S1-002 |Progress increases monotonically |SW-REQ-DISP-S1-001 |A
+|UT-DISP-S1-003 |Progress never exceeds 100 |SW-REQ-DISP-S1-001 |A
+|UT-DISP-S1-004 |Auto-navigate at TOTAL_TICKS |SW-REQ-DISP-S1-002 |B
+|UT-DISP-S1-005 |No early navigation |SW-REQ-DISP-S1-002 |A
+|UT-DISP-S2-001 |Digit press accumulates buffer |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-002 |7th digit rejected |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-003 |Delete on empty buffer no-op |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-004 |OK with <6 digits blocked |SW-REQ-DISP-S2-002 |A
+|UT-DISP-S2-005 |OK with 6 digits navigates |SW-REQ-DISP-S2-002 |B
+|UT-DISP-S2-006 |Indicator matches live length |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S3-001 |Card selection updates preview |SW-REQ-DISP-S3-001 |B
+|UT-DISP-S3-002 |Buttons disabled with no selection |SW-REQ-DISP-S3-002 |B
+|UT-DISP-S3-003 |Buttons enabled after selection |SW-REQ-DISP-S3-002 |B
+|UT-DISP-S3-004 |Confirm navigates to Screen 5 |SW-REQ-DISP-S3-003 |B
+|UT-DISP-S3-005 |Change Config navigates to Screen 4 |SW-REQ-DISP-S3-003 |B
+|UT-DISP-S3-006 |Change Config blocked with no selection |SW-REQ-DISP-S3-003 |A
+|UT-DISP-S3-007 |Confirm path skips active-target write (defect) |SW-REQ-DISP-S3-004 |A
+|UT-DISP-S4-001 |Temp Plus upper clamp (15) |SW-REQ-DISP-S4-001 |A
+|UT-DISP-S4-002 |Temp Minus lower clamp (0) |SW-REQ-DISP-S4-001 |A
+|UT-DISP-S4-003 |Critical Cold band (0-2) |SW-REQ-DISP-S4-002 |A
+|UT-DISP-S4-004 |Caution band (3) |SW-REQ-DISP-S4-002 |A
+|UT-DISP-S4-005 |Safe Zone band (4-10) |SW-REQ-DISP-S4-002 |A
+|UT-DISP-S4-006 |Caution band (11-12) |SW-REQ-DISP-S4-002 |A
+|UT-DISP-S4-007 |Critical Warm band (13-15) |SW-REQ-DISP-S4-002 |A
+|UT-DISP-S4-008 |Confirm saves to Model, navigates |SW-REQ-DISP-S4-003 |B
+|UT-DISP-S5-001 |Reads target temp from Model |SW-REQ-DISP-S5-001 |B
+|UT-DISP-S5-002 |Cooling simulation, no undershoot |SW-REQ-DISP-S5-001 |A
+|UT-DISP-S5-003 |Red colour far from target |SW-REQ-DISP-S5-002 |A
+|UT-DISP-S5-004 |Orange colour approaching |SW-REQ-DISP-S5-002 |A
+|UT-DISP-S5-005 |Green + Continue at target |SW-REQ-DISP-S5-002 |B
+|UT-DISP-S5-006 |Progress ring 0-25°C mapping/clamp |SW-REQ-DISP-S5-003 |A
+|UT-DISP-S5-007 |Continue navigates to Screen 6 |SW-REQ-DISP-S5-004 |B
+|UT-DISP-S6-001 |Fill simulation increments |SW-REQ-DISP-S6-001 |A
+|UT-DISP-S6-002 |Fill clamps at 1000 mL |SW-REQ-DISP-S6-001 |A
+|UT-DISP-S6-003 |Completion text/colour/button |SW-REQ-DISP-S6-002 |B
+|UT-DISP-S6-004 |Continue navigates to Screen 7 |SW-REQ-DISP-S6-003 |B
+|UT-DISP-S7-001 |Stage 1 initial state |SW-REQ-DISP-S7-001 |B
+|UT-DISP-S7-002 |60-tick second decrement |SW-REQ-DISP-S7-001 |A
+|UT-DISP-S7-003 |Cycle 1→2 rollover (Stage 1) |SW-REQ-DISP-S7-002 |A
+|UT-DISP-S7-004 |Stage 1→2 transition |SW-REQ-DISP-S7-002 |A
+|UT-DISP-S7-005 |Stage 2→3 transition, blank title |SW-REQ-DISP-S7-002 |B
+|UT-DISP-S7-006 |Stage 3 freezes timers |SW-REQ-DISP-S7-003 |A
+|UT-DISP-S7-007 |Progress percentage formula |SW-REQ-DISP-S7-001 |A
+|UT-DISP-S7-008 |Continue navigates to Screen 8 |SW-REQ-DISP-S7-004 |B
+|UT-DISP-S8-001 |Continue disabled initially |SW-REQ-DISP-S8-001 |B
+|UT-DISP-S8-002 |Clamp-time placeholder blocks Continue |SW-REQ-DISP-S8-001 |A
+|UT-DISP-S8-003 |All fields valid enables Continue |SW-REQ-DISP-S8-001 |B
+|UT-DISP-S8-004 |Literal "HH:MM" edge case |SW-REQ-DISP-S8-002 |A
+|UT-DISP-S8-005 |OrganID truncation end-to-end |SW-REQ-DISP-S8-003 |A
+|UT-DISP-S8-006 |Cancel discards field edit |SW-REQ-DISP-S8-002 |B
+|UT-DISP-S8-007 |Continue saves all six fields |SW-REQ-DISP-S8-004 |B
+|UT-DISP-S9-001 |Hypothermic selection styling |SW-REQ-DISP-S9-001 |B
+|UT-DISP-S9-002 |Mutually-exclusive selection |SW-REQ-DISP-S9-001 |B
+|UT-DISP-S9-003 |Hypothermic → Screen 10 |SW-REQ-DISP-S9-002 |B
+|UT-DISP-S9-004 |Dynamic → Screen 12 |SW-REQ-DISP-S9-002 |B
+|UT-DISP-S9-005 |Static → Screen 12 |SW-REQ-DISP-S9-002 |B
+|UT-DISP-S9-006 |No-selection Confirm — no navigation |SW-REQ-DISP-S9-002 |A
+|UT-DISP-S10-001 |Initial state — hidden button |SW-REQ-DISP-S10-001 |B
+|UT-DISP-S10-002 |Progress increments every 2 ticks |SW-REQ-DISP-S10-001 |A
+|UT-DISP-S10-003 |Completion state and message |SW-REQ-DISP-S10-002 |B
+|UT-DISP-S10-004 |Freezes after completion |SW-REQ-DISP-S10-002 |A
+|UT-DISP-S11-001 |Initial deairing state |SW-REQ-DISP-S11-001 |B
+|UT-DISP-S11-002 |60-tick second decrement |SW-REQ-DISP-S11-001 |A
+|UT-DISP-S11-003 |Cycle 1→2 rollover |SW-REQ-DISP-S11-002 |A
+|UT-DISP-S11-004 |Cycle 2 completion state |SW-REQ-DISP-S11-002 |A
+|UT-DISP-S11-005 |1.5 s hold before auto-nav |SW-REQ-DISP-S11-003 |B
+|UT-DISP-S12-001 |Displays Model temp/pressure |SW-REQ-DISP-S12-001 |B
+|UT-DISP-S12-002 |End-to-end defect confirmation |SW-REQ-DISP-S12-001 |B
+|UT-DISP-S12-003 |No navigation implemented |SW-REQ-DISP-S12-002 |A
+|UT-DISP-S13-001 |Temp Plus upper clamp (20) |SW-REQ-DISP-S13-001 |A
+|UT-DISP-S13-002 |Temp Minus lower clamp (0) |SW-REQ-DISP-S13-001 |A
+|UT-DISP-S13-003 |Press Plus upper clamp (100) |SW-REQ-DISP-S13-001 |A
+|UT-DISP-S13-004 |Press Minus lower clamp (0) |SW-REQ-DISP-S13-001 |A
+|UT-DISP-S13-005 |Range inconsistency vs Screen 4 |SW-REQ-DISP-S13-002 |A
+|UT-DISP-S13-006 |Reads initial values from Model |SW-REQ-DISP-S13-003 |B
+|UT-DISP-S13-007 |Confirm saves both, navigates |SW-REQ-DISP-S13-004 |B
+|UT-DISP-S14-001 |Smoke test only |SW-REQ-DISP-S14-001 |B
+|UT-DISP-S15-001 |Elapsed time rollover |SW-REQ-DISP-S15-001 |A
+|UT-DISP-S15-002 |Cycle count — Dynamic only |SW-REQ-DISP-S15-002 |A
+|UT-DISP-S15-003 |Flush countdown 55→0→55 |SW-REQ-DISP-S15-002 |A
+|UT-DISP-S15-004 |Motor status — Hypothermic |SW-REQ-DISP-S15-003 |A
+|UT-DISP-S15-005 |Motor status — Dynamic minute 55 |SW-REQ-DISP-S15-003 |A
+|UT-DISP-S15-006 |Motor status — Static/None |SW-REQ-DISP-S15-003 |A
+|UT-DISP-S15-007 |3× Warning alarm generation |SW-REQ-DISP-S15-004 |A
+|UT-DISP-S15-008 |4th alarm triggers Critical overlay |SW-REQ-DISP-S15-004 |B
+|UT-DISP-S15-009 |No alarms while critical active |SW-REQ-DISP-S15-004 |A
+|UT-DISP-S15-010 |Acknowledge keeps critical lock |SW-REQ-DISP-S15-005 |B
+|UT-DISP-S15-011 |Dash markers in non-Dynamic/critical |SW-REQ-DISP-S15-003 |A
+|UT-DISP-S15-012 |Battery status text thresholds |SW-REQ-DISP-S15-006 |A
+|UT-DISP-S15-013 |Battery runtime formula |SW-REQ-DISP-S15-006 |A
+|UT-DISP-S15-014 |Battery overlay open/close |SW-REQ-DISP-S15-007 |B
+|UT-DISP-S15-015 |End Procedure stores time, navigates |SW-REQ-DISP-S15-008 |B
+|UT-DISP-S16-001 |Initial checklist state |SW-REQ-DISP-S16-001 |B
+|UT-DISP-S16-002 |Step 1 toggles independently |SW-REQ-DISP-S16-001 |A
+|UT-DISP-S16-003 |Step 2 gated on Step 1 |SW-REQ-DISP-S16-002 |A
+|UT-DISP-S16-004 |Un-toggling Step 2 cascades to Step 3 |SW-REQ-DISP-S16-002 |A
+|UT-DISP-S16-005 |Un-toggling Step 1 cascades to 2 & 3 |SW-REQ-DISP-S16-002 |A
+|UT-DISP-S16-006 |Step 3 gated on Step 2 |SW-REQ-DISP-S16-002 |A
+|UT-DISP-S16-007 |Proceed enabled only when all 3 done |SW-REQ-DISP-S16-003 |B
+|UT-DISP-S16-008 |Proceed has no navigation handler (defect) |SW-REQ-DISP-S16-004 |B
+|UT-DISP-S17-001 |Initial loading state |SW-REQ-DISP-S17-001 |B
+|UT-DISP-S17-002 |Progress reaches 100 once |SW-REQ-DISP-S17-001 |A
+|UT-DISP-S17-003 |Summary reveal on completion |SW-REQ-DISP-S17-001 |B
+|UT-DISP-S17-004 |Organ/session fields from Model |SW-REQ-DISP-S17-002 |B
+|UT-DISP-S17-005 |Elapsed time formatting |SW-REQ-DISP-S17-002 |A
+|UT-DISP-S17-006 |Placeholder telemetry fields (defect) |SW-REQ-DISP-S17-003 |A
+|UT-DISP-S18-001 |Smoke test only |SW-REQ-DISP-S18-001 |B
+
+|===
+
+[[manual-hardware-test-cases-summary]]
+== Manual (Lane B) Test Cases Summary
+
+Test cases marked **B** in the Test Traceability Matrix above require the TouchGFX x86 Simulator or the Riverdi target board and are executed by hand, per the <<automated-test-execution-procedure,Test Execution Procedure>>. They are concentrated around: screen navigation/transitions, colour and visibility state confirmed by eye, and touch-input dispatch (button taps, card selection, keyboard entry). Refer to each test case's own Test Steps for the exact interaction sequence.
+
+Lane A (Automated) test cases are, by contrast, concentrated in: `Model` data-layer behaviour, boundary/clamp arithmetic (temperature, pressure, volume, PIN length, alarm counters), and state-machine transition logic that does not itself depend on reading rendered pixels.
+
+---
+
+[[open-items]]
+== Open Items
+
+[cols="1,1,3,1", options="header"]
+|===
+|ID |Priority |Description |Owner
+
+|OI-DISP-001
+|High
+|Requirement IDs (`SW-REQ-DISP-*`) used throughout this specification are placeholders and must be formally allocated in the SRS before this spec can be reviewed — mirrors OI-001 in <<UT-SPEC-MW-001>>. Screen 2's PIN buffer also has no validation against a stored/expected credential anywhere in the current code; confirm whether PIN checking happens on the S32K312 side via the SDO write (per `SWRS-M2-HMI-02`) or is missing entirely.
+|Systems Engineering
+
+|OI-DISP-002
+|High
+|**Defect candidate:** the "Confirm Selection" path on Screen 3 (bypassing Screen 4's Manual Override) never writes the selected organ's default temperature/pressure into `Model::activeTargetTemperature/Pressure`. Screens 5 and 12 will display stale or default (0) values for any session that takes this path. See UT-DISP-S3-007 and UT-DISP-S12-002.
+|Firmware/GUI Team
+
+|OI-DISP-003
+|Low
+|Screen 8's Cross-Clamp Time validation rejects the literal string "HH:MM" as a value forever, since it is compared byte-for-byte against the placeholder text rather than tracked via a separate "field touched" flag. Confirm whether this is an acceptable limitation or needs a dedicated edited-flag.
+|Firmware/GUI Team
+
+|OI-DISP-004
+|Medium
+|Screen 9's Confirm/Continue button, when no preservation mode has been selected, saves `PRESERVATION_NONE` but does not navigate anywhere and gives no on-screen feedback to the operator. Confirm intended UX (silently block vs. show a "select a mode" prompt).
+|UX / Systems Engineering
+
+|OI-DISP-005
+|High
+|Screens 10 and 11 (Oxygenator Connection / Oxygenator Priming), reachable via the Hypothermic preservation-mode path on Screen 9, implement HOPE/oxygenator functionality that is explicitly listed as **out of scope for v0.0.x** in both `CIOET-ORGPORT-SWRS-2026-001` §2.1 and `CIOET-ORGPORT-SWRS-RVD-2026-001` §2.1. Reconcile: either these screens are ahead of the current SRS baseline and should be excluded from the v0.0.x test scope, or the SRS scope statement needs updating.
+|Systems Engineering
+
+|OI-DISP-006
+|Medium
+|Screen 12 (Recommended Configuration) has no outgoing navigation call anywhere in `Screen12View.cpp`. Confirm whether it is a deliberate dead-end confirmation card (navigation to be added at the Designer/interaction level) or an incomplete screen.
+|Firmware/GUI Team
+
+|OI-DISP-007
+|Medium
+|Screen 4 (Manual Override) clamps temperature to 0-15°C while Screen 13 (Advanced Manual Override) clamps the same logical value to 0-20°C. Reconcile the correct clinical range and make both screens consistent.
+|Systems Engineering / Firmware Team
+
+|OI-DISP-008
+|Medium
+|Screen 14 is an empty, unimplemented stub reachable from Screen 13's Confirm button. It has no title, no widgets driven from code, and no outgoing navigation — it is a current dead end in the workflow. Needs either implementation or removal from the navigation graph.
+|Firmware/GUI Team
+
+|OI-DISP-009
+|High
+|Screen 16's `buttonProceed` becomes touchable once all three checklist steps are complete, but no click handler exists in `Screen16View.cpp` to act on the tap — the checklist currently cannot be completed/exited by the operator. Needs a handler and a defined destination screen (likely Screen 17).
+|Firmware/GUI Team
+
+|OI-DISP-010
+|High
+|Screen 17's Transport Summary populates temperature/pressure min-max-avg, alarm count, alarm log, battery-swap count, and battery log with **hard-coded placeholder strings**, not data derived from the actual session (e.g. the alarms generated on Screen 15). This must be replaced with real aggregation before this screen can be considered clinically accurate for a released build.
+|Firmware/GUI Team
+
+|OI-DISP-011
+|Low
+|Screen 18 is an empty, unimplemented stub with no discoverable inbound navigation from any other screen in the current codebase. Confirm intended purpose (e.g. a settings/diagnostics screen) or remove.
+|Firmware/GUI Team
+
+|OI-DISP-012
+|Medium
+|This specification's Lane A ("Automated") test cases assume a Unity host-build harness that links `Model`/View logic directly, with TouchGFX widget calls stubbed. This harness does not yet exist for the `display/` project (unlike the CMock harness already used in <<UT-SPEC-MW-001>> for the middleware modules) and needs to be built before Lane A cases can actually be executed as automated tests rather than manual code-reading exercises.
+|Test Engineering
+
+|OI-DISP-013
+|Low
+|TouchGFX Designer / STM32CubeIDE toolchain versions used to build `display/` are not yet pinned in this document's Test Environment section. Confirm and record exact versions once the Riverdi target build is finalised, matching the level of detail in <<UT-SPEC-MW-001>>'s Software and Toolchain table.
+|Firmware Team
+
+|===
+
+---
+
+_End of document UT-SPEC-DISP-001 v0.1_
