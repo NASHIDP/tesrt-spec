@@ -149,7 +149,7 @@ It does **not** cover:
 . The Simulator (or target board) is freshly restarted before each test suite execution, so `Model::Model()` runs its default-constructor initialisation (`selectedOrgan = ORGAN_NONE`, `activeTargetTemperature = 8`, `activeTargetPressure = 0`, all string buffers empty).
 . Screen navigation starts from Screen 1 (Startup) unless a test case states it starts from a specific screen — reaching later screens in isolation requires either replaying the preceding screens or a debug jump (`application().gotoScreenNScreenNoTransition()` called directly from a test harness).
 . All wildcard buffers are in their designer-default (unformatted) state at the start of each screen's `setupScreen()` unless stated otherwise.
-. Test results are recorded in the Test Execution Report (document TER-DISP-001, to be created).
+. Test results are recorded in the Test Execution Report (document TER-DISP-001).
 
 === Pass / Fail Criteria
 
