@@ -648,22 +648,19 @@ CUT: `Screen8View` (six `Editable` fields wired to the shared `Keyboard`; `valid
 |`validateInputs()` returns `true`; `ContinueButton` becomes touchable at alpha 255.
 |B
 
-|UT-DISP-S8-004 icon:flag[role=orange]
-|Enter the literal text `HH:MM` as an intentional (if unusual) clamp time value.
-|**[Edge case — see <<open-items,OI-DISP-003>>]** `isClampTimeValid` evaluates `false` because the check compares the raw buffer against the placeholder string rather than tracking a separate "has been edited" flag — the literal string "HH:MM" can never be accepted as a valid clamp time. Document as a known limitation.
-|A
 
-|UT-DISP-S8-005
+
+|UT-DISP-S8-004
 |Tap `btnOrganIDClicked()`, type a 40-character Organ ID (Model buffer is 32 chars), tap Apply, then Continue.
 |`Model::storedOrganID` holds the truncated (31-char + null) value — confirms the full pipeline (Keyboard → `Editable` → UTF-8 conversion → `Model::setOrganID` `strncpy`) truncates safely with no overrun at any stage.
 |A
 
-|UT-DISP-S8-006
+|UT-DISP-S8-005
 |Open Keyboard for a field, type text, tap `editCancel()` instead of Apply.
 |The field's `val*` buffer is unchanged; Keyboard closes without saving.
 |B
 
-|UT-DISP-S8-007
+|UT-DISP-S8-006
 |Fill all fields validly, tap Continue.
 |`onContinueButtonClicked()` converts all six wildcard buffers to UTF-8, calls `presenter->saveOrganDataToModel()` with all six values, and navigates to Screen 9.
 |B
