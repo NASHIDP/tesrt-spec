@@ -22,7 +22,7 @@
 |===
 |Version |Date       |Author  |Reviewer  |Change Summary
 
-|0.1     |2026-07-30 |Shanid  |TBD       |Initial draft, covers all 18 TouchGFX screens + Model + shared containers
+|1.0     |2026-07-30 |Nashid  |Benin R       |Initial draft
 
 |===
 
