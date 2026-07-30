@@ -793,14 +793,11 @@ CUT: `Screen12View` (read-only display of `Model::activeTargetTemperature/Pressu
 |B
 
 |UT-DISP-S12-002 icon:flag[role=red]
-|Enter Screen 12 via the path Screen 3 (Confirm Selection, Heart) → 5 → … → 9 (Dynamic) → 12, i.e. **without** ever visiting Screen 4 or Screen 13.
+|Enter 
 |**[Depends on OI-DISP-002]** `activeTargetPressure` still reads its constructor default of `0` rather than Heart's expected default of 20, because no screen on this path ever calls `setActiveTargetPressure()`. This test is the end-to-end confirmation of the Screen 3 gap and is expected to **FAIL** until fixed.
 |B
 
-|UT-DISP-S12-003
-|No navigation logic is present in `Screen12View.cpp` at all (no `goto*` call found).
-|**[See <<open-items,OI-DISP-006>>]** confirm whether Screen 12 is meant to be a dead-end summary/confirmation card wired only through a Designer-level interaction not yet present in the `.cpp`, or whether a Continue handler is still to be implemented.
-|A
+
 
 |===
 
