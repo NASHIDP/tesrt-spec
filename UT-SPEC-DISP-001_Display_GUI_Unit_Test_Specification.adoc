@@ -848,19 +848,16 @@ CUT: `Screen13View` (temperature 0-20°C and pressure 0-100 mmHg clamps).
 
 |===
 
-== Screen 14 — (Unimplemented Stub)
+== Screen 14 — System ready
 
-[IMPORTANT]
-====
-`Screen14View.cpp` contains only `setupScreen()`/`tearDownScreen()`/`handleTickEvent()` boilerplate — no title, no widgets driven, and no outgoing navigation call. It is reachable from Screen 13's Confirm button but is currently a dead end. See <<open-items,OI-DISP-008>>.
-====
+
 
 [cols="1,3,1,1", options="header"]
 |===
 |Test ID |Objective / Steps |Expected Result |Lane
 
 |UT-DISP-S14-001
-|Navigate to Screen 14 via Screen 13's Confirm button.
+|Navigate to Screen 15 via Proceed to Organ Conservation button.
 |Screen displays with no crash (baseline smoke test only — no functional behaviour exists yet to verify).
 |B
 
