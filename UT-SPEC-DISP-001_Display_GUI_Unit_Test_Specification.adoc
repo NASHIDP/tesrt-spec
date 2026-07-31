@@ -792,9 +792,14 @@ CUT: `Screen12View` (read-only display of `Model::activeTargetTemperature/Pressu
 |`tempBuffer` formats as "6.0"; `pressBuffer` formats as "20".
 |B
 
-|UT-DISP-S12-002 icon:flag[role=red]
-|Enter 
-|**[Depends on OI-DISP-002]** `activeTargetPressure` still reads its constructor default of `0` rather than Heart's expected default of 20, because no screen on this path ever calls `setActiveTargetPressure()`. This test is the end-to-end confirmation of the Screen 3 gap and is expected to **FAIL** until fixed.
+|UT-DISP-S12-002 
+|Tap Accept Configuration Button
+|navigates to screen 14
+|B
+
+|UT-DISP-S12-003
+|Tap Modify Configuration Button
+|navigates to screen 13
 |B
 
 
