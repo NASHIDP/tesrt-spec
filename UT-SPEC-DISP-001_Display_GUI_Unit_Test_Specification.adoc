@@ -931,17 +931,13 @@ CUT: `Screen15View` — the largest and most stateful screen: elapsed-time track
 |Status text reads "Fully Charged" for `>=95`, "Discharging" for the mid-range, and "Battery Low" for `<=15` — confirms both threshold boundaries are inclusive on the correct side.
 |A
 
-|UT-DISP-S15-013
-|At `simulatedBatteryLevel = 100`.
-|Estimated runtime formula (`hours = level*8/100`, `minutes = (level*45/100)%60`) evaluates to "8 hr 15 mnt".
-|A
 
-|UT-DISP-S15-014
+|UT-DISP-S15-013
 |Tap `buttonBatteryClicked()`, then `buttongobackClicked()`.
 |Battery overlay opens then closes correctly; `buttongoback`'s full-screen invisible capture target is enabled only while the overlay is open.
 |B
 
-|UT-DISP-S15-015
+|UT-DISP-S15-014
 |Tap `endProcedureClicked()`.
 |`isTimerActive` latches `false` (all further ticks are no-ops); `presenter->storeProcedureDuration()` writes the frozen `elapsedHours/Minutes/Seconds` to the Model; navigates to Screen 16.
 |B
@@ -1174,9 +1170,9 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 |UT-DISP-S15-010 |Acknowledge keeps critical lock |SW-REQ-DISP-S15-005 |B
 |UT-DISP-S15-011 |Dash markers in non-Dynamic/critical |SW-REQ-DISP-S15-003 |A
 |UT-DISP-S15-012 |Battery status text thresholds |SW-REQ-DISP-S15-006 |A
-|UT-DISP-S15-013 |Battery runtime formula |SW-REQ-DISP-S15-006 |A
-|UT-DISP-S15-014 |Battery overlay open/close |SW-REQ-DISP-S15-007 |B
-|UT-DISP-S15-015 |End Procedure stores time, navigates |SW-REQ-DISP-S15-008 |B
+
+|UT-DISP-S15-013 |Battery overlay open/close |SW-REQ-DISP-S15-007 |B
+|UT-DISP-S15-014 |End Procedure stores time, navigates |SW-REQ-DISP-S15-008 |B
 |UT-DISP-S16-001 |Initial checklist state |SW-REQ-DISP-S16-001 |B
 |UT-DISP-S16-002 |Step 1 toggles independently |SW-REQ-DISP-S16-001 |A
 |UT-DISP-S16-003 |Step 2 gated on Step 1 |SW-REQ-DISP-S16-002 |A
