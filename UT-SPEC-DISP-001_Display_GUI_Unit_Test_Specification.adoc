@@ -993,7 +993,7 @@ CUT: `Screen16View` (3-step sequential checklist with cascading resets).
 
 |UT-DISP-S16-008 icon:flag[role=red]
 |With all three steps complete, tap `buttonProceed`.
-|**[See <<open-items,OI-DISP-009>>]** No click handler (`buttonProceedClicked()` or similar) exists anywhere in `Screen16View.cpp` — the button becomes touchable but currently performs no action and does not navigate onward. Expected to **FAIL** until a handler and destination screen are implemented.
+|Navigates to Screen 17
 |B
 
 |===
