@@ -1221,60 +1221,23 @@ Lane A (Automated) test cases are, by contrast, concentrated in: `Model` data-la
 |**Defect candidate:** the "Confirm Selection" path on Screen 3 (bypassing Screen 4's Manual Override) never writes the selected organ's default temperature/pressure into `Model::activeTargetTemperature/Pressure`. Screens 5 and 12 will display stale or default (0) values for any session that takes this path. See UT-DISP-S3-007 and UT-DISP-S12-002.
 |Firmware/GUI Team
 
+
+
+
+
 |OI-DISP-003
-|Low
-|Screen 8's Cross-Clamp Time validation rejects the literal string "HH:MM" as a value forever, since it is compared byte-for-byte against the placeholder text rather than tracked via a separate "field touched" flag. Confirm whether this is an acceptable limitation or needs a dedicated edited-flag.
-|Firmware/GUI Team
-
-|OI-DISP-004
-|Medium
-|Screen 9's Confirm/Continue button, when no preservation mode has been selected, saves `PRESERVATION_NONE` but does not navigate anywhere and gives no on-screen feedback to the operator. Confirm intended UX (silently block vs. show a "select a mode" prompt).
-|UX / Systems Engineering
-
-|OI-DISP-005
 |High
 |Screens 10 and 11 (Oxygenator Connection / Oxygenator Priming), reachable via the Hypothermic preservation-mode path on Screen 9, implement HOPE/oxygenator functionality that is explicitly listed as **out of scope for v0.0.x** in both `CIOET-ORGPORT-SWRS-2026-001` §2.1 and `CIOET-ORGPORT-SWRS-RVD-2026-001` §2.1. Reconcile: either these screens are ahead of the current SRS baseline and should be excluded from the v0.0.x test scope, or the SRS scope statement needs updating.
 |Systems Engineering
 
-|OI-DISP-006
-|Medium
-|Screen 12 (Recommended Configuration) has no outgoing navigation call anywhere in `Screen12View.cpp`. Confirm whether it is a deliberate dead-end confirmation card (navigation to be added at the Designer/interaction level) or an incomplete screen.
-|Firmware/GUI Team
 
-|OI-DISP-007
-|Medium
-|Screen 4 (Manual Override) clamps temperature to 0-15°C while Screen 13 (Advanced Manual Override) clamps the same logical value to 0-20°C. Reconcile the correct clinical range and make both screens consistent.
-|Systems Engineering / Firmware Team
 
-|OI-DISP-008
-|Medium
-|Screen 14 is an empty, unimplemented stub reachable from Screen 13's Confirm button. It has no title, no widgets driven from code, and no outgoing navigation — it is a current dead end in the workflow. Needs either implementation or removal from the navigation graph.
-|Firmware/GUI Team
-
-|OI-DISP-009
-|High
-|Screen 16's `buttonProceed` becomes touchable once all three checklist steps are complete, but no click handler exists in `Screen16View.cpp` to act on the tap — the checklist currently cannot be completed/exited by the operator. Needs a handler and a defined destination screen (likely Screen 17).
-|Firmware/GUI Team
-
-|OI-DISP-010
+|OI-DISP-04
 |High
 |Screen 17's Transport Summary populates temperature/pressure min-max-avg, alarm count, alarm log, battery-swap count, and battery log with **hard-coded placeholder strings**, not data derived from the actual session (e.g. the alarms generated on Screen 15). This must be replaced with real aggregation before this screen can be considered clinically accurate for a released build.
 |Firmware/GUI Team
 
-|OI-DISP-011
-|Low
-|Screen 18 is an empty, unimplemented stub with no discoverable inbound navigation from any other screen in the current codebase. Confirm intended purpose (e.g. a settings/diagnostics screen) or remove.
-|Firmware/GUI Team
 
-|OI-DISP-012
-|Medium
-|This specification's Lane A ("Automated") test cases assume a Unity host-build harness that links `Model`/View logic directly, with TouchGFX widget calls stubbed. This harness does not yet exist for the `display/` project (unlike the CMock harness already used in <<UT-SPEC-MW-001>> for the middleware modules) and needs to be built before Lane A cases can actually be executed as automated tests rather than manual code-reading exercises.
-|Test Engineering
-
-|OI-DISP-013
-|Low
-|TouchGFX Designer / STM32CubeIDE toolchain versions used to build `display/` are not yet pinned in this document's Test Environment section. Confirm and record exact versions once the Riverdi target build is finalised, matching the level of detail in <<UT-SPEC-MW-001>>'s Software and Toolchain table.
-|Firmware Team
 
 |===
 
