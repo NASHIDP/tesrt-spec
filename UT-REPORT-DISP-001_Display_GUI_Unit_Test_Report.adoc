@@ -241,38 +241,51 @@ Each test case below states its Lane (**A** or **B**) in the Execution column of
 [[overview-lane-a-results]]
 ==== Overview — Lane A Results
 
-[[screen-2-authentication-pin-entry-lane-a-results]]
-==== Screen 2 — Authentication (PIN Entry) — Lane A Results
-
-Console log: `build/console.log`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
-|UT-DISP-S2-002
-|Digits 1-6 accumulate into pinBuffer, pinLength==6
+|UT-DISP-MDL-001
+|getOrganDefaults(ORGAN_HEART)
 |PASS
 
-|UT-DISP-S2-003
-|7th digit rejected once buffer full (overflow protection)
+|UT-DISP-MDL-002
+|getOrganDefaults(ORGAN_LIVER)
 |PASS
 
-|UT-DISP-S2-004
-|Delete on empty buffer does not underflow
+|UT-DISP-MDL-003
+|getOrganDefaults(ORGAN_KIDNEY)
 |PASS
 
-|UT-DISP-S2-005
-|OK with only 5 digits does not navigate
+|UT-DISP-MDL-004
+|getOrganDefaults(ORGAN_NONE)
 |PASS
 
-|UT-DISP-S2-007
-|Indicator count matches live pinLength through enter/delete/enter
+|UT-DISP-MDL-005
+|setOrganID() 40-char truncation
+|PASS
+
+|UT-DISP-MDL-006
+|setHarvestHospital/setDestinationInstitution 100-char truncation
+|PASS
+
+|UT-DISP-MDL-007
+|setBloodType() 12-char truncation
+|PASS
+
+|UT-DISP-MDL-008
+|getInstance() singleton pointer
+|PASS
+
+|UT-DISP-MDL-009
+|default-construction baseline (temp=8, pressure=0)
+|PASS
+
+|UT-DISP-MDL-010
+|saveFinalElapsedTime() round-trip
 |PASS
 
 |===
-
-**5 / 5 PASS.** S2-001, S2-006 are Lane B per the spec.
 
 **TBD / 10 PASS.**
 
