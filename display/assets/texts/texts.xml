@@ -1,0 +1,821 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextDatabase xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="texts.xsd" Version="4.26.1">
+  <Languages>
+    <Language Id="GB" />
+  </Languages>
+  <Texts>
+    <TextGroup Id="Group1">
+      <Text Id="ResourceId1" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB" Alignment="Center">Software Version: v1.0.0</Translation>
+      </Text>
+    </TextGroup>
+    <TextGroup Id="Unsorted">
+      <Text Id="__SingleUse_LUAE" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_QL2I" Alignment="Center" TypographyId="Typography7">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_RSC2" Alignment="Left" TypographyId="Typography9">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_W68O" Alignment="Left" TypographyId="Typography9">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_6K75" Alignment="Left" TypographyId="Typography9">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_33FU" Alignment="Center" TypographyId="Typography9">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_3K07" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB">System Moved to Static Cold Storage Mode</Translation>
+      </Text>
+      <Text Id="__SingleUse_MC8N" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Acknowledge</Translation>
+      </Text>
+      <Text Id="__SingleUse_AWJR" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_IBNX" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_35NM" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_DMEE" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_7KS9" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Critical Alert</Translation>
+      </Text>
+      <Text Id="__SingleUse_8RCE" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_4YYH" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_9PSI" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB">CNSNJNJCNNSJNCSNNCJSNCJSN</Translation>
+      </Text>
+      <Text Id="__SingleUse_SDHI" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Acknowledge</Translation>
+      </Text>
+      <Text Id="__SingleUse_MXAF" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Silence Alarm</Translation>
+      </Text>
+      <Text Id="__SingleUse_RFS6" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_5OHW" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_ZCIZ" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">X</Translation>
+      </Text>
+      <Text Id="__SingleUse_8U5R" Alignment="Center" TypographyId="Typography7">
+        <Translation Language="GB">Alarm Center</Translation>
+      </Text>
+      <Text Id="__SingleUse_HWFZ" Alignment="Center" TypographyId="Typography9">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_6FPD" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Alerts</Translation>
+      </Text>
+      <Text Id="__SingleUse_47D1" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">POWER OFF</Translation>
+      </Text>
+      <Text Id="__SingleUse_DHWW" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Safe to Power Off</Translation>
+      </Text>
+      <Text Id="__SingleUse_YESM" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">History Saved Sucessfully</Translation>
+      </Text>
+      <Text Id="__SingleUse_NNBN" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Preservation Session Complete</Translation>
+      </Text>
+      <Text Id="__SingleUse_LL4J" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">SHUTDOWN</Translation>
+      </Text>
+      <Text Id="__SingleUse_JAEF" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Battery Events</Translation>
+      </Text>
+      <Text Id="__SingleUse_GOXR" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Swaps:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_OEBH" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_SUDU" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Alarm Events</Translation>
+      </Text>
+      <Text Id="__SingleUse_8V5C" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Total Alarms:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_J6KZ" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_A7C3" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Pressure Summary</Translation>
+      </Text>
+      <Text Id="__SingleUse_7XJN" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Min:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_RKG2" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Max:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_7WXJ" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Avg:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_JUYH" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Temperature Summary</Translation>
+      </Text>
+      <Text Id="__SingleUse_5733" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Min:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_GNLF" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Max:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_PZQ8" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Avg:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_2KCE" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Preservation Time</Translation>
+      </Text>
+      <Text Id="__SingleUse_U188" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Total:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_VUS8" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Harvest Hospital:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_1M5U" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Blood Type:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_SK8J" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Weight:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_YZ7C" Alignment="Left" TypographyId="Typography7">
+        <Translation Language="GB">Organ ID:&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_9IQS" Alignment="Left" TypographyId="Typography8">
+        <Translation Language="GB">Organ Details</Translation>
+      </Text>
+      <Text Id="__SingleUse_LCL8" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Please wait while session data is saved</Translation>
+      </Text>
+      <Text Id="__SingleUse_IBG1" Alignment="Left" TypographyId="page1">
+        <Translation Language="GB">Saving History..</Translation>
+      </Text>
+      <Text Id="__SingleUse_9L53" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Complete all steps in order upon arrival</Translation>
+      </Text>
+      <Text Id="__SingleUse_464E" Alignment="Center" TypographyId="page1">
+        <Translation Language="GB">All Steps Completed-Proceed</Translation>
+      </Text>
+      <Text Id="__SingleUse_XV1Q" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">Stop Motors</Translation>
+      </Text>
+      <Text Id="__SingleUse_ZERJ" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">Release Clamp</Translation>
+      </Text>
+      <Text Id="__SingleUse_UGVJ" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">Take Terminal Cardioplegia</Translation>
+      </Text>
+      <Text Id="__SingleUse_TAY6" Alignment="Center" TypographyId="Typography7">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_DSCU" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">End Procedure</Translation>
+      </Text>
+      <Text Id="__SingleUse_B8ZU" Alignment="Center" TypographyId="Typography6">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_KJJQ" Alignment="Center" TypographyId="Typography6">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_QLFX" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Remaining Runtime</Translation>
+      </Text>
+      <Text Id="__SingleUse_T1IL" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Battery Level</Translation>
+      </Text>
+      <Text Id="__SingleUse_46UM" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_15DI" Alignment="Left" TypographyId="button">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_AGYZ" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_KPN2" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Next Flushing</Translation>
+      </Text>
+      <Text Id="__SingleUse_HJYY" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_2L83" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Number of Cycles</Translation>
+      </Text>
+      <Text Id="__SingleUse_IBXL" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_J5GL" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Motor Status</Translation>
+      </Text>
+      <Text Id="__SingleUse_TWVM" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_SLO4" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Elapsed Time</Translation>
+      </Text>
+      <Text Id="__SingleUse_HGJT" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_OFTV" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Loading Time</Translation>
+      </Text>
+      <Text Id="__SingleUse_I8YH" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB">mmHg</Translation>
+      </Text>
+      <Text Id="__SingleUse_VXSV" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_ORQQ" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Pressure</Translation>
+      </Text>
+      <Text Id="__SingleUse_ZMZG" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB">L/min</Translation>
+      </Text>
+      <Text Id="__SingleUse_40SP" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">0.5</Translation>
+      </Text>
+      <Text Id="__SingleUse_M00H" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Flow Rate</Translation>
+      </Text>
+      <Text Id="__SingleUse_Y1M7" Alignment="Left" TypographyId="Typography4">
+        <Translation Language="GB">°C</Translation>
+      </Text>
+      <Text Id="__SingleUse_L40T" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_0AIV" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Temperature</Translation>
+      </Text>
+      <Text Id="__SingleUse_N3M6" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Proceed to Organ Preservation</Translation>
+      </Text>
+      <Text Id="__SingleUse_Q3CN" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">Connect Organ to the System</Translation>
+      </Text>
+      <Text Id="__SingleUse_FPUW" Alignment="Center" TypographyId="Typography6">
+        <Translation Language="GB">SYSTEM READY</Translation>
+      </Text>
+      <Text Id="__SingleUse_0MWR" Alignment="Left" TypographyId="button">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_O60L" Alignment="Left" TypographyId="button">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_JSK3" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Confirm Configuration</Translation>
+      </Text>
+      <Text Id="__SingleUse_CHAM" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">mmHg</Translation>
+      </Text>
+      <Text Id="__SingleUse_M5MH" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">°C</Translation>
+      </Text>
+      <Text Id="__SingleUse_PEEZ" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">Pressure(mmHg)</Translation>
+      </Text>
+      <Text Id="__SingleUse_EWMR" Alignment="Center" TypographyId="Typography5">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_R4N4" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">+</Translation>
+      </Text>
+      <Text Id="__SingleUse_L8I0" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">-</Translation>
+      </Text>
+      <Text Id="__SingleUse_RY1S" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">Temperature(°C)</Translation>
+      </Text>
+      <Text Id="__SingleUse_DA6A" Alignment="Center" TypographyId="Typography5">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_YW8B" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">+</Translation>
+      </Text>
+      <Text Id="__SingleUse_XB12" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">-</Translation>
+      </Text>
+      <Text Id="__SingleUse_WXA9" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Modify Configuration</Translation>
+      </Text>
+      <Text Id="__SingleUse_AZAY" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Accept Configuration</Translation>
+      </Text>
+      <Text Id="__SingleUse_WFRX" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">mmHg</Translation>
+      </Text>
+      <Text Id="__SingleUse_ZVT3" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">°C</Translation>
+      </Text>
+      <Text Id="__SingleUse_ME4J" Alignment="Center" TypographyId="Typography5">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_B180" Alignment="Center" TypographyId="Typography5">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_1HQN" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">Perfusion Pressure</Translation>
+      </Text>
+      <Text Id="__SingleUse_6B0C" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">Preservation Temperature</Translation>
+      </Text>
+      <Text Id="__SingleUse_WTNA" Alignment="Center" TypographyId="page1">
+        <Translation Language="GB">Current Perfusion Configuration</Translation>
+      </Text>
+      <Text Id="__SingleUse_BZ86" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_OR8E" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_0KRK" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Purge Countdown</Translation>
+      </Text>
+      <Text Id="__SingleUse_FTXG" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_6LT4" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Purge Cycle</Translation>
+      </Text>
+      <Text Id="__SingleUse_TQ66" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">Waiting for Oxygenator Module...</Translation>
+      </Text>
+      <Text Id="__SingleUse_FNR7" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Continue</Translation>
+      </Text>
+      <Text Id="__SingleUse_9ORI" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_HZRE" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Continue</Translation>
+      </Text>
+      <Text Id="__SingleUse_RXBP" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Static Cold Storage</Translation>
+      </Text>
+      <Text Id="__SingleUse_M76W" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Dynamic Cold Storage</Translation>
+      </Text>
+      <Text Id="__SingleUse_E7ZF" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Hypothermic Oxygenated Perfusion</Translation>
+      </Text>
+      <Text Id="__SingleUse_V5JF" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Continue</Translation>
+      </Text>
+      <Text Id="__SingleUse_40N9" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Continue</Translation>
+      </Text>
+      <Text Id="__SingleUse_53ZH" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Harvest Hospital</Translation>
+      </Text>
+      <Text Id="__SingleUse_HGS0" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Blood Type</Translation>
+      </Text>
+      <Text Id="__SingleUse_TFN7" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Organ Weight(g)</Translation>
+      </Text>
+      <Text Id="__SingleUse_3B6N" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Destination Institution</Translation>
+      </Text>
+      <Text Id="__SingleUse_CQYL" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Cross Clamp Time</Translation>
+      </Text>
+      <Text Id="__SingleUse_N26T" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Organ ID</Translation>
+      </Text>
+      <Text Id="__SingleUse_E90K" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">g</Translation>
+      </Text>
+      <Text Id="__SingleUse_DT7T" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_HYQ8" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_0K19" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_7HHG" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_Z4DQ" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">Optional</Translation>
+      </Text>
+      <Text Id="__SingleUse_8JX0" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt; &gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_RIDZ" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">HH:MM</Translation>
+      </Text>
+      <Text Id="__SingleUse_VR1T" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_NMXR" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_01DT" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt; &gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_IJFS" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB"></Translation>
+      </Text>
+      <Text Id="__SingleUse_NWH0" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_9KTZ" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">SYSTEM READY FOR ORGAN RECEIVAL</Translation>
+      </Text>
+      <Text Id="__SingleUse_BU5B" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Bubble-Free Circuit Confirmed</Translation>
+      </Text>
+      <Text Id="__SingleUse_T11Q" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Flow Path Validated</Translation>
+      </Text>
+      <Text Id="__SingleUse_OTSS" Alignment="Center" TypographyId="Typography4">
+        <Translation Language="GB">Priming Succesful</Translation>
+      </Text>
+      <Text Id="__SingleUse_MAMW" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Scanning Flow Circuit..</Translation>
+      </Text>
+      <Text Id="__SingleUse_Z72K" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_3D0S" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Scan Countdown</Translation>
+      </Text>
+      <Text Id="__SingleUse_WMVI" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_TTXN" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Detection Cycle</Translation>
+      </Text>
+      <Text Id="__SingleUse_POH5" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Deairing In Progress</Translation>
+      </Text>
+      <Text Id="__SingleUse_MK8M" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_62F8" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Purge Countdown</Translation>
+      </Text>
+      <Text Id="__SingleUse_7SLQ" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_W206" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Purge Cycle</Translation>
+      </Text>
+      <Text Id="__SingleUse_JQJT" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Continue</Translation>
+      </Text>
+      <Text Id="__SingleUse_VU48" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_1IL2" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_ZJJE" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_F9IJ" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">ml</Translation>
+      </Text>
+      <Text Id="__SingleUse_7SS7" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Current Volume</Translation>
+      </Text>
+      <Text Id="__SingleUse_DQ21" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">1000</Translation>
+      </Text>
+      <Text Id="__SingleUse_9YFC" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">ml</Translation>
+      </Text>
+      <Text Id="__SingleUse_4G6C" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Required Volume</Translation>
+      </Text>
+      <Text Id="__SingleUse_3PU1" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Continue</Translation>
+      </Text>
+      <Text Id="__SingleUse_KLWX" Alignment="Center" TypographyId="Typography3">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_8H8Z" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Target Temperature °C</Translation>
+      </Text>
+      <Text Id="__SingleUse_45T1" Alignment="Center" TypographyId="Typography3">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_BOA7" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Current Temperature °C</Translation>
+      </Text>
+      <Text Id="__SingleUse_J2ZH" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Confirm Selection</Translation>
+      </Text>
+      <Text Id="__SingleUse_OTCA" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">+</Translation>
+      </Text>
+      <Text Id="__SingleUse_BO6B" Alignment="Center" TypographyId="Title_Font">
+        <Translation Language="GB">-</Translation>
+      </Text>
+      <Text Id="__SingleUse_3IHR" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_LWE8" Alignment="Center" TypographyId="Typography2">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_HG5K" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Set Temp °C</Translation>
+      </Text>
+      <Text Id="__SingleUse_SDQ7" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Temperature Override</Translation>
+      </Text>
+      <Text Id="__SingleUse_75SL" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Change Configuration</Translation>
+      </Text>
+      <Text Id="__SingleUse_T4FR" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">Confirm Selection</Translation>
+      </Text>
+      <Text Id="__SingleUse_EKOJ" Alignment="Left" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_P27H" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">mmHg</Translation>
+      </Text>
+      <Text Id="__SingleUse_0VSH" Alignment="Left" TypographyId="Title_Font">
+        <Translation Language="GB">&lt;value&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_RDRN" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Preservation Pressure</Translation>
+      </Text>
+      <Text Id="__SingleUse_5VHZ" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">°C</Translation>
+      </Text>
+      <Text Id="__SingleUse_2JKB" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Preservation Temperature</Translation>
+      </Text>
+      <Text Id="__SingleUse_UQ3H" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">KIDNEY</Translation>
+      </Text>
+      <Text Id="__SingleUse_5HSR" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">LIVER</Translation>
+      </Text>
+      <Text Id="__SingleUse_HICP" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">HEART</Translation>
+      </Text>
+      <Text Id="__SingleUse_OR76" Alignment="Center" TypographyId="page1">
+        <Translation Language="GB">OK</Translation>
+      </Text>
+      <Text Id="__SingleUse_NTNJ" Alignment="Center" TypographyId="page1">
+        <Translation Language="GB">DEL</Translation>
+      </Text>
+      <Text Id="__SingleUse_RSRK" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_KAYO" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">9</Translation>
+      </Text>
+      <Text Id="__SingleUse_7PNV" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">8</Translation>
+      </Text>
+      <Text Id="__SingleUse_8UU6" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">7</Translation>
+      </Text>
+      <Text Id="__SingleUse_H5G7" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">6</Translation>
+      </Text>
+      <Text Id="__SingleUse_9H1S" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">5</Translation>
+      </Text>
+      <Text Id="__SingleUse_Q02U" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">4</Translation>
+      </Text>
+      <Text Id="__SingleUse_QTJQ" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">3</Translation>
+      </Text>
+      <Text Id="__SingleUse_MW1G" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">2</Translation>
+      </Text>
+      <Text Id="__SingleUse_W8IX" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">1</Translation>
+      </Text>
+      <Text Id="__SingleUse_TZYT" Alignment="Left" TypographyId="button">
+        <Translation Language="GB">Enter PIN</Translation>
+      </Text>
+      <Text Id="__SingleUse_FLL0" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">ENTER PIN</Translation>
+      </Text>
+      <Text Id="__SingleUse_1PEU" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB">Awaiting badge scan</Translation>
+      </Text>
+      <Text Id="__SingleUse_0YW0" Alignment="Left" TypographyId="Large">
+        <Translation Language="GB">          RFID&#10; AUTHENTICATION</Translation>
+      </Text>
+      <Text Id="__SingleUse_T1GG" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Hold badge near&#10;       reader</Translation>
+      </Text>
+      <Text Id="__SingleUse_HBA1" Alignment="Left" TypographyId="Typography1">
+        <Translation Language="GB">Please wait…</Translation>
+      </Text>
+      <Text Id="__SingleUse_FDF5" Alignment="Left" TypographyId="page1">
+        <Translation Language="GB">Validating Sensors &amp; Subsystems</Translation>
+      </Text>
+      <Text Id="__SingleUse_TIXA" Alignment="Center" TypographyId="Typography7">
+        <Translation Language="GB">Hardware Version: HW-1.0</Translation>
+      </Text>
+      <Text Id="__SingleUse_0A7E" Alignment="Center" TypographyId="Typography7">
+        <Translation Language="GB">Software Version: v1.0.0</Translation>
+      </Text>
+      <Text Id="__SingleUse_VBQ4" Alignment="Center" TypographyId="button">
+        <Translation Language="GB">CONTINUE</Translation>
+      </Text>
+      <Text Id="__SingleUse_GWD7" Alignment="Left" TypographyId="Default">
+        <Translation Language="GB"></Translation>
+      </Text>
+    </TextGroup>
+    <TextGroup Id="Keyboard">
+      <Text Id="KEY41" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">m</Translation>
+      </Text>
+      <Text Id="KEY_VALUE" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;k&gt;</Translation>
+      </Text>
+      <Text Id="KEY01" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">1</Translation>
+      </Text>
+      <Text Id="KEY02" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">2</Translation>
+      </Text>
+      <Text Id="KEY03" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">3</Translation>
+      </Text>
+      <Text Id="KEY04" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">4</Translation>
+      </Text>
+      <Text Id="KEY05" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">5</Translation>
+      </Text>
+      <Text Id="KEY06" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">6</Translation>
+      </Text>
+      <Text Id="KEY07" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">7</Translation>
+      </Text>
+      <Text Id="KEY08" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">8</Translation>
+      </Text>
+      <Text Id="KEY09" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">9</Translation>
+      </Text>
+      <Text Id="KEY10" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="KEY11" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">←</Translation>
+      </Text>
+      <Text Id="KEY12" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">q</Translation>
+      </Text>
+      <Text Id="KEY13" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">w</Translation>
+      </Text>
+      <Text Id="KEY14" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">e</Translation>
+      </Text>
+      <Text Id="KEY15" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">r</Translation>
+      </Text>
+      <Text Id="KEY16" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">t</Translation>
+      </Text>
+      <Text Id="KEY17" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">y</Translation>
+      </Text>
+      <Text Id="KEY18" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">u</Translation>
+      </Text>
+      <Text Id="KEY19" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">i</Translation>
+      </Text>
+      <Text Id="KEY20" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">o</Translation>
+      </Text>
+      <Text Id="KEY21" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">p</Translation>
+      </Text>
+      <Text Id="KEY22" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">-</Translation>
+      </Text>
+      <Text Id="KEY23" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">a</Translation>
+      </Text>
+      <Text Id="KEY24" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">s</Translation>
+      </Text>
+      <Text Id="KEY25" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">d</Translation>
+      </Text>
+      <Text Id="KEY26" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">f</Translation>
+      </Text>
+      <Text Id="KEY27" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">g</Translation>
+      </Text>
+      <Text Id="KEY28" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">h</Translation>
+      </Text>
+      <Text Id="KEY29" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">j</Translation>
+      </Text>
+      <Text Id="KEY30" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">k</Translation>
+      </Text>
+      <Text Id="KEY31" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">l</Translation>
+      </Text>
+      <Text Id="KEY32" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">(</Translation>
+      </Text>
+      <Text Id="KEY33" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">)</Translation>
+      </Text>
+      <Text Id="KEY34" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">⇧</Translation>
+      </Text>
+      <Text Id="KEY35" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">z</Translation>
+      </Text>
+      <Text Id="KEY36" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">x</Translation>
+      </Text>
+      <Text Id="KEY37" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">c</Translation>
+      </Text>
+      <Text Id="KEY38" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">v</Translation>
+      </Text>
+      <Text Id="KEY39" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">b</Translation>
+      </Text>
+      <Text Id="KEY40" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">n</Translation>
+      </Text>
+      <Text Id="KEY42" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">,</Translation>
+      </Text>
+      <Text Id="KEY43" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">.</Translation>
+      </Text>
+      <Text Id="KEY44" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">⇧</Translation>
+      </Text>
+      <Text Id="KEY45" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">Esc</Translation>
+      </Text>
+      <Text Id="KEY47" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">@</Translation>
+      </Text>
+      <Text Id="KEY48" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">#</Translation>
+      </Text>
+      <Text Id="KEY49" Alignment="Center" TypographyId="Keyboard">
+        <Translation Language="GB">↵</Translation>
+      </Text>
+      <Text Id="KEYBOARD_TEXT_PLACEHOLDER" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">[New Text]</Translation>
+      </Text>
+      <Text Id="KEYBOARD_WILDCARD" Alignment="Left" TypographyId="Keyboard">
+        <Translation Language="GB">&lt;v&gt;</Translation>
+      </Text>
+    </TextGroup>
+  </Texts>
+  <Typographies>
+    <Typography Id="Default" Font="verdana.ttf" Size="20" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz, " />
+    <Typography Id="Large" Font="verdana.ttf" Size="40" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="a-z,A-Z, " />
+    <Typography Id="Small" Font="verdana.ttf" Size="13" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="Title_Font" Font="arial.ttf" Size="64" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-,:, ,/-" />
+    <Typography Id="button" Font="GOTHICB.TTF" Size="35" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz✓.!" />
+    <Typography Id="page1" Font="TCCEB.TTF" Size="27" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="Typography1" Font="verdana.ttf" Size="20" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="Typography2" Font="arial.ttf" Size="180" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-" />
+    <Typography Id="Typography3" Font="arial.ttf" Size="62" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-,." />
+    <Typography Id="Typography4" Font="GOTHICB.TTF" Size="24" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz, " />
+    <Typography Id="Keyboard" Font="DejaVuSansMono.ttf" Size="22" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters=" @#%-+()[],.;:/&quot;!" WildcardCharacterRanges="0-9,A-Z,a-z" />
+    <Typography Id="Typography5" Font="ROCKB.TTF" Size="85" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-,." />
+    <Typography Id="Typography6" Font="GOTHICB.TTF" Size="50" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-,.%hrmnt, " />
+    <Typography Id="Typography7" Font="GOTHICB.TTF" Size="20" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-,.ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-°,% " />
+    <Typography Id="Typography8" Font="verdana.ttf" Size="16" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="Typography9" Font="SCHLBKB.TTF" Size="18" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacters="0123456789-,.:%" />
+  </Typographies>
+</TextDatabase>
