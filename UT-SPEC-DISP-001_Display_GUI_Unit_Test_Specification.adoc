@@ -1087,13 +1087,13 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 |UT-DISP-S1-002 |Progress increases monotonically |SW-REQ-DISP-S1-001 |A
 |UT-DISP-S1-003 |Progress never exceeds 100 |SW-REQ-DISP-S1-001 |A
 |UT-DISP-S1-004 |Auto-navigate at TOTAL_TICKS |SW-REQ-DISP-S1-002 |B
-|UT-DISP-S1-005 |No early navigation |SW-REQ-DISP-S1-002 |A
-|UT-DISP-S2-001 |Digit press accumulates buffer |SW-REQ-DISP-S2-001 |A
-|UT-DISP-S2-002 |7th digit rejected |SW-REQ-DISP-S2-001 |A
-|UT-DISP-S2-003 |Delete on empty buffer no-op |SW-REQ-DISP-S2-001 |A
-|UT-DISP-S2-004 |OK with <6 digits blocked |SW-REQ-DISP-S2-002 |A
-|UT-DISP-S2-005 |OK with 6 digits navigates |SW-REQ-DISP-S2-002 |B
-|UT-DISP-S2-006 |Indicator matches live length |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-001 |Tap Enter pin button|SW-REQ-DISP-S2-001|B
+|UT-DISP-S2-002 |Digit press accumulates buffer |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-003 |7th digit rejected |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-004 |Delete on empty buffer no-op |SW-REQ-DISP-S2-001 |A
+|UT-DISP-S2-005 |OK with <6 digits blocked |SW-REQ-DISP-S2-002 |A
+|UT-DISP-S2-006 |OK with 6 digits navigates |SW-REQ-DISP-S2-002 |B
+|UT-DISP-S2-007 |Indicator matches live length |SW-REQ-DISP-S2-001 |A
 |UT-DISP-S3-001 |Card selection updates preview |SW-REQ-DISP-S3-001 |B
 |UT-DISP-S3-002 |Buttons disabled with no selection |SW-REQ-DISP-S3-002 |B
 |UT-DISP-S3-003 |Buttons enabled after selection |SW-REQ-DISP-S3-002 |B
@@ -1128,13 +1128,14 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 |UT-DISP-S7-006 |Stage 3 freezes timers |SW-REQ-DISP-S7-003 |A
 |UT-DISP-S7-007 |Progress percentage formula |SW-REQ-DISP-S7-001 |A
 |UT-DISP-S7-008 |Continue navigates to Screen 8 |SW-REQ-DISP-S7-004 |B
+
 |UT-DISP-S8-001 |Continue disabled initially |SW-REQ-DISP-S8-001 |B
 |UT-DISP-S8-002 |Clamp-time placeholder blocks Continue |SW-REQ-DISP-S8-001 |A
 |UT-DISP-S8-003 |All fields valid enables Continue |SW-REQ-DISP-S8-001 |B
-|UT-DISP-S8-004 |Literal "HH:MM" edge case |SW-REQ-DISP-S8-002 |A
-|UT-DISP-S8-005 |OrganID truncation end-to-end |SW-REQ-DISP-S8-003 |A
-|UT-DISP-S8-006 |Cancel discards field edit |SW-REQ-DISP-S8-002 |B
-|UT-DISP-S8-007 |Continue saves all six fields |SW-REQ-DISP-S8-004 |B
+|UT-DISP-S8-004 |OrganID truncation end-to-end |SW-REQ-DISP-S8-003 |A
+|UT-DISP-S8-005 |Cancel discards field edit |SW-REQ-DISP-S8-002 |B
+|UT-DISP-S8-006 |Continue saves all six fields |SW-REQ-DISP-S8-004 |B
+
 |UT-DISP-S9-001 |Hypothermic selection styling |SW-REQ-DISP-S9-001 |B
 |UT-DISP-S9-002 |Mutually-exclusive selection |SW-REQ-DISP-S9-001 |B
 |UT-DISP-S9-003 |Hypothermic → Screen 10 |SW-REQ-DISP-S9-002 |B
@@ -1151,15 +1152,15 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 |UT-DISP-S11-004 |Cycle 2 completion state |SW-REQ-DISP-S11-002 |A
 |UT-DISP-S11-005 |1.5 s hold before auto-nav |SW-REQ-DISP-S11-003 |B
 |UT-DISP-S12-001 |Displays Model temp/pressure |SW-REQ-DISP-S12-001 |B
-|UT-DISP-S12-002 |End-to-end defect confirmation |SW-REQ-DISP-S12-001 |B
-|UT-DISP-S12-003 |No navigation implemented |SW-REQ-DISP-S12-002 |A
+|UT-DISP-S12-002 |Tap Accept Configuration Button |SW-REQ-DISP-S12-001 |B
+|UT-DISP-S12-003 |Tap Modify Configuration Button |SW-REQ-DISP-S12-002 |B
 |UT-DISP-S13-001 |Temp Plus upper clamp (20) |SW-REQ-DISP-S13-001 |A
 |UT-DISP-S13-002 |Temp Minus lower clamp (0) |SW-REQ-DISP-S13-001 |A
 |UT-DISP-S13-003 |Press Plus upper clamp (100) |SW-REQ-DISP-S13-001 |A
 |UT-DISP-S13-004 |Press Minus lower clamp (0) |SW-REQ-DISP-S13-001 |A
-|UT-DISP-S13-005 |Range inconsistency vs Screen 4 |SW-REQ-DISP-S13-002 |A
-|UT-DISP-S13-006 |Reads initial values from Model |SW-REQ-DISP-S13-003 |B
-|UT-DISP-S13-007 |Confirm saves both, navigates |SW-REQ-DISP-S13-004 |B
+
+|UT-DISP-S13-005 |Reads initial values from Model |SW-REQ-DISP-S13-003 |B
+|UT-DISP-S13-006 |Confirm saves both, navigates |SW-REQ-DISP-S13-004 |B
 |UT-DISP-S14-001 |Smoke test only |SW-REQ-DISP-S14-001 |B
 |UT-DISP-S15-001 |Elapsed time rollover |SW-REQ-DISP-S15-001 |A
 |UT-DISP-S15-002 |Cycle count — Dynamic only |SW-REQ-DISP-S15-002 |A
