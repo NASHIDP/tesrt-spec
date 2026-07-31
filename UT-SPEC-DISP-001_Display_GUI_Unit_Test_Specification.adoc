@@ -371,7 +371,7 @@ CUT: `Screen2View` (6-digit PIN buffer, no validation against a stored credentia
 |UT-DISP-S2-001
 |Tap the Enter Pin Button 
 |makes the pinPadModal container visible
-|A
+|B
 
 |UT-DISP-S2-002
 |Press digits `1`-`6` in sequence via `btn1Clicked()` … `btn6Clicked()`.
