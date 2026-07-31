@@ -711,7 +711,7 @@ CUT: `Screen9View` (Hypothermic / Dynamic / Static selection; branches navigatio
 
 [IMPORTANT]
 ====
-Per `CIOET-ORGPORT-SWRS-2026-001` §2.1 and `CIOET-ORGPORT-SWRS-RVD-2026-001` §2.1, *"Continuous Hypothermic Oxygenated Perfusion (HOPE) and oxygenator hardware"* / *"HOPE/oxygenator mode display screens"* are **explicitly out of scope for v0.0.x**. Screens 10 and 11 implement exactly this feature, reachable via the Hypothermic preservation-mode path from Screen 9. This is flagged in <<open-items,OI-DISP-005>> for Systems Engineering / SRS reconciliation before these test cases are formally executed against a released SWRS baseline.
+Per `CIOET-ORGPORT-SWRS-2026-001` §2.1 and `CIOET-ORGPORT-SWRS-RVD-2026-001` §2.1, *"Continuous Hypothermic Oxygenated Perfusion (HOPE) and oxygenator hardware"* / *"HOPE/oxygenator mode display screens"* are **explicitly out of scope for v0.0.x**. Screens 10 and 11 implement exactly this feature, reachable via the Hypothermic preservation-mode path from Screen 9. This is flagged in <<open-items,OI-DISP-003>> for Systems Engineering / SRS reconciliation before these test cases are formally executed against a released SWRS baseline.
 ====
 
 CUT: `Screen10View` (simulated oxygenator-detection progress bar).
@@ -744,7 +744,7 @@ CUT: `Screen10View` (simulated oxygenator-detection progress bar).
 
 == Screen 11 — Oxygenator Priming
 
-(Subject to the same scope note as Screen 10 — see <<open-items,OI-DISP-005>>.)
+(Subject to the same scope note as Screen 10 — see <<open-items,OI-DISP-003>>.)
 
 CUT: `Screen11View` (2×60 s deairing cycles, then a 1.5 s hold before auto-navigating).
 
@@ -1033,7 +1033,7 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 
 |UT-DISP-S17-006 icon:flag[role=red]
 |Inspect the temperature, pressure, alarm-count, alarm-log, battery-swap-count, and battery-log fields populated by `populateMockData()`.
-|**[See <<open-items,OI-DISP-010>>]** All six of these fields are hard-coded placeholder strings (`"4.2 C"`, `"7.8 C"`, `"2"`, a fixed two-line alarm log, etc.) regardless of what actually happened during the session on Screens 15/16 — they are **not** computed from real telemetry or from the alarms generated on Screen 15. This test documents current (placeholder) behaviour so any future change to real aggregation logic is a deliberate, tracked change rather than a silent regression.
+|**[See <<open-items,OI-DISP-04>>]** All six of these fields are hard-coded placeholder strings (`"4.2 C"`, `"7.8 C"`, `"2"`, a fixed two-line alarm log, etc.) regardless of what actually happened during the session on Screens 15/16 — they are **not** computed from real telemetry or from the alarms generated on Screen 15. This test documents current (placeholder) behaviour so any future change to real aggregation logic is a deliberate, tracked change rather than a silent regression.
 |A
 
 |===
