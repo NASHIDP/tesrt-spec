@@ -1038,12 +1038,9 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 
 |===
 
-== Screen 18 — (Unimplemented Stub)
+== Screen 18 — Preservation Complete(Final Screen)
 
-[IMPORTANT]
-====
-`Screen18View.cpp` contains only boilerplate, identical in shape to Screen 14 — no title, no widget logic, and (as far as could be determined) no inbound navigation call from any other screen in the current codebase. See <<open-items,OI-DISP-011>>.
-====
+
 
 [cols="1,3,1,1", options="header"]
 |===
