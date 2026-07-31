@@ -834,17 +834,14 @@ CUT: `Screen13View` (temperature 0-20°C and pressure 0-100 mmHg clamps).
 |Value stays at 0 (lower clamp).
 |A
 
-|UT-DISP-S13-005 icon:flag[role=orange]
-|Compare Screen 13's temperature range (0-20°C) against Screen 4's Manual Override range (0-15°C).
-|**[Inconsistency — see <<open-items,OI-DISP-007>>]** Two screens both labelled "Manual Override" clamp temperature to different maxima (15°C vs 20°C). Confirm with Systems Engineering which range is clinically correct and reconcile.
-|A
 
-|UT-DISP-S13-006
+
+|UT-DISP-S13-005
 |On entry, `presenter->getInitialTemperature()/getInitialPressure()` are read from the Model.
 |Displayed starting values match whatever was last stored in `Model::activeTargetTemperature/Pressure` (round-trip read-after-write with Screen 4 or a prior Screen 13 visit).
 |B
 
-|UT-DISP-S13-007
+|UT-DISP-S13-006
 |Adjust both values, tap Confirm.
 |`presenter->saveManualConfiguration(temp, press)` writes both fields to the Model; navigates to **Screen 14**.
 |B
