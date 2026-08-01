@@ -341,7 +341,7 @@ Each test case below states its Lane (**A** or **B**) in the Execution column of
 ==== TopStatusBar — Lane B Results
 
 evidence: link:https://drive.google.com/drive/folders/12cxdkmqFH1DseGrvVQKJnFUhD7jhTkyM?usp=drive_link[View Drive Folder]
-
+image::fgf.png[width=600]
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
@@ -537,7 +537,7 @@ CUT: `Screen1View` (progress-loader driven auto-navigation to Screen 2).
 [[screen-1-startup-self-check-lane-b-results]]
 ==== Screen 1 — Startup / Self-Check — Lane B Results
 
-evidence: link:https://drive.google.com/drive/folders/18gZ8YE7s3DtlvwYV8UipuoJyJ-oadxfl?usp=drive_link[View Drive Folder]
+image::fgf.png[]
 
 [cols="1,3,1", options="header"]
 |===
