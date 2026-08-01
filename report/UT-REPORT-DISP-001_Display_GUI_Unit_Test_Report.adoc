@@ -124,6 +124,8 @@ It does **not** cover:
 
 |===
 
+image::report/Screenshot 2026-07-30 162442.png[]
+
 === Software and Toolchain
 
 [cols="1,3", options="header"]
