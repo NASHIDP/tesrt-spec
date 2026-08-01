@@ -2,6 +2,7 @@
 :doctype: article
 :toc: left
 :toclevels: 3
+:imagesdir: images
 :sectnums:
 :sectnumlevels: 4
 :icons: font
@@ -80,7 +81,7 @@ It does **not** cover:
 |CIOET-ORGPORT-SWRS-RVD-2026-001
 |OrgPort SWRS — Riverdi HMI Node (Node 0x06)
 
-
+image::fgf.png[Alt Text]
 |===
 
 == Definitions and Abbreviations
