@@ -241,55 +241,53 @@ Each test case below states its Lane (**A** or **B**) in the Execution column of
 [[overview-lane-a-results]]
 ==== Overview — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-MDL-001
-|Organ defaults — Heart
-|TBD
+|getOrganDefaults(ORGAN_HEART)
+|PASS
 
 |UT-DISP-MDL-002
-|Organ defaults — Liver
-|TBD
+|getOrganDefaults(ORGAN_LIVER)
+|PASS
 
 |UT-DISP-MDL-003
-|Organ defaults — Kidney
-|TBD
+|getOrganDefaults(ORGAN_KIDNEY)
+|PASS
 
 |UT-DISP-MDL-004
-|Organ defaults — None
-|TBD
+|getOrganDefaults(ORGAN_NONE)
+|PASS
 
 |UT-DISP-MDL-005
-|OrganID setter truncation
-|TBD
+|setOrganID() 40-char truncation
+|PASS
 
 |UT-DISP-MDL-006
-|Hospital/Destination truncation
-|TBD
+|setHarvestHospital/setDestinationInstitution 100-char truncation
+|PASS
 
 |UT-DISP-MDL-007
-|BloodType truncation
-|TBD
+|setBloodType() 12-char truncation
+|PASS
 
 |UT-DISP-MDL-008
-|Singleton instance identity
-|TBD
+|getInstance() singleton pointer
+|PASS
 
 |UT-DISP-MDL-009
-|Default active target values
-|TBD
+|default-construction baseline (temp=8, pressure=0)
+|PASS
 
 |UT-DISP-MDL-010
-|Final elapsed time round-trip
-|TBD
+|saveFinalElapsedTime() round-trip
+|PASS
 
 |===
 
-**TBD / 10 PASS.**
+
 
 
 ---
@@ -327,24 +325,20 @@ Console log: `TBD`
 [[topstatusbar-lane-a-results]]
 ==== TopStatusBar — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-TSB-003
-|handleTickEvent null-app guard
-|TBD
+|handleTickEvent() returns immediately when Application is null
+|PASS
 
 |===
-
-**TBD / 1 PASS.**
 
 [[topstatusbar-lane-b-results]]
 ==== TopStatusBar — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence: link:https://drive.google.com/drive/folders/12cxdkmqFH1DseGrvVQKJnFUhD7jhTkyM?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -352,19 +346,19 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-TSB-001
 |setScreenTitle displays text
-|TBD
+|PASS
 
 |UT-DISP-TSB-002
 |setScreenTitle("") blanks title
-|TBD
+|PASS
 
 |UT-DISP-TSB-004
 |GPS icon visibility toggle
-|TBD
+|PASS
 
 |===
 
-**TBD / 3 PASS.**
+
 
 === AlarmMessageTemplate
 
@@ -397,32 +391,27 @@ Screenshots/evidence: `TBD (Drive link)`
 [[alarmmessagetemplate-lane-a-results]]
 ==== AlarmMessageTemplate — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-ALM-002
-|Title truncation
-|TBD
+|Title >31 chars truncates to 31 + null
+|PASS
 
 |UT-DISP-ALM-003
-|Description truncation
-|TBD
+|Description >127 chars truncates to 127 + null
+|PASS
 
 |UT-DISP-ALM-004
-|No stale content across calls
-|TBD
+|Second (shorter) call leaves no stale trailing chars
+|PASS
 
 |===
-
-**TBD / 3 PASS.**
-
 [[alarmmessagetemplate-lane-b-results]]
 ==== AlarmMessageTemplate — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1sQDFh6_PWUAakXaDKDoDw46kvjacL1S2?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -430,11 +419,10 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-ALM-001
 |setupAlarmCard content + colour
-|TBD
+|PASS
 
 |===
 
-**TBD / 1 PASS.**
 
 === Keyboard (third-party component — integration points only)
 
@@ -467,7 +455,7 @@ Screenshots/evidence: `TBD (Drive link)`
 [[keyboard-third-party-component-integration-points-only-lane-b-results]]
 ==== Keyboard (third-party component — integration points only) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence: link:https://drive.google.com/drive/folders/1OVYfmqv-jHbPaZp2hbpVaES8RlR1ka5Y?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -475,23 +463,23 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-KBD-001
 |Apply with empty input
-|TBD
+|PASS
 
 |UT-DISP-KBD-002
 |Caps lock affects subsequent input
-|TBD
+|PASS
 
 |UT-DISP-KBD-003
 |Backspace removes last char
-|TBD
+|PASS
 
 |UT-DISP-KBD-004
 |Cancel discards edit
-|TBD
+|PASS
 
 |===
 
-**TBD / 4 PASS.**
+
 
 ---
 
@@ -530,28 +518,24 @@ CUT: `Screen1View` (progress-loader driven auto-navigation to Screen 2).
 [[screen-1-startup-self-check-lane-a-results]]
 ==== Screen 1 — Startup / Self-Check — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S1-002
-|Progress increases monotonically
-|TBD
+|Progress increases monotonically towards 100
+|PASS
 
 |UT-DISP-S1-003
-|Progress never exceeds 100
-|TBD
+|progressValue never exceeds 100 past TOTAL_TICKS
+|PASS
 
 |===
-
-**TBD / 2 PASS.**
 
 [[screen-1-startup-self-check-lane-b-results]]
 ==== Screen 1 — Startup / Self-Check — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence: link:https://drive.google.com/drive/folders/18gZ8YE7s3DtlvwYV8UipuoJyJ-oadxfl?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -559,15 +543,15 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S1-001
 |Continue reveals modal
-|TBD
+|PASS
 
 |UT-DISP-S1-004
 |Auto-navigate at TOTAL_TICKS
-|TBD
+|PASS
 
 |===
 
-**TBD / 2 PASS.**
+
 
 == Screen 2 — Authentication (PIN Entry)
 
@@ -617,40 +601,36 @@ CUT: `Screen2View` (6-digit PIN buffer, no validation against a stored credentia
 [[screen-2-authentication-pin-entry-lane-a-results]]
 ==== Screen 2 — Authentication (PIN Entry) — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S2-002
-|Digit press accumulates buffer
-|TBD
+|Digits 1-6 accumulate into pinBuffer, pinLength==6
+|PASS
 
 |UT-DISP-S2-003
-|7th digit rejected
-|TBD
+|7th digit rejected once buffer full (overflow protection)
+|PASS
 
 |UT-DISP-S2-004
-|Delete on empty buffer no-op
-|TBD
+|Delete on empty buffer does not underflow
+|PASS
 
 |UT-DISP-S2-005
-|OK with <6 digits blocked
-|TBD
+|OK with only 5 digits does not navigate
+|PASS
 
 |UT-DISP-S2-007
-|Indicator matches live length
-|TBD
+|Indicator count matches live pinLength through enter/delete/enter
+|PASS
 
 |===
-
-**TBD / 5 PASS.**
 
 [[screen-2-authentication-pin-entry-lane-b-results]]
 ==== Screen 2 — Authentication (PIN Entry) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1wtgHrBnyAhhfdVJ6V-ndussjDfXWNYFE?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -658,15 +638,15 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S2-001
 |Tap Enter pin button
-|TBD
+|PASS
 
 |UT-DISP-S2-006
 |OK with 6 digits navigates
-|TBD
+|PASS
 
 |===
 
-**TBD / 2 PASS.**
+
 
 == Screen 3 — Select Organ Type
 
@@ -716,28 +696,24 @@ CUT: `Screen3View` (organ card selection, button enable/disable, navigation to S
 [[screen-3-select-organ-type-lane-a-results]]
 ==== Screen 3 — Select Organ Type — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S3-006
-|Change Config blocked with no selection
-|TBD
+|Change Configuration with no organ selected does not navigate
+|PASS
 
 |UT-DISP-S3-007
-|Confirm path skips active-target write (defect)
-|TBD
+|(flagged) Confirm Selection bypasses Screen 4, moves to Screen 5
+|PASS
 
 |===
-
-**TBD / 2 PASS.**
 
 [[screen-3-select-organ-type-lane-b-results]]
 ==== Screen 3 — Select Organ Type — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1rIim37uUjhM3EC8UfgFEZ04xJEv01Q8U?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -745,27 +721,27 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S3-001
 |Card selection updates preview
-|TBD
+|PASS
 
 |UT-DISP-S3-002
 |Buttons disabled with no selection
-|TBD
+|PASS
 
 |UT-DISP-S3-003
 |Buttons enabled after selection
-|TBD
+|PASS
 
 |UT-DISP-S3-004
 |Confirm navigates to Screen 5
-|TBD
+|PASS
 
 |UT-DISP-S3-005
 |Change Config navigates to Screen 4
-|TBD
+|PASS
 
 |===
 
-**TBD / 5 PASS.**
+
 
 == Screen 4 — Manual Override (Temperature)
 
@@ -820,48 +796,43 @@ CUT: `Screen4View` (0-15°C clamp, 5-band colour/status classification).
 [[screen-4-manual-override-temperature-lane-a-results]]
 ==== Screen 4 — Manual Override (Temperature) — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S4-001
-|Temp Plus upper clamp (15)
-|TBD
+|Upper clamp holds at 15
+|PASS
 
 |UT-DISP-S4-002
-|Temp Minus lower clamp (0)
-|TBD
+|Lower clamp holds at 0
+|PASS
 
 |UT-DISP-S4-003
-|Critical Cold band (0-2)
-|TBD
+|0,1,2 -> "Critical Cold" / red
+|PASS
 
 |UT-DISP-S4-004
-|Caution band (3)
-|TBD
+|3 -> "Caution" / orange
+|PASS
 
 |UT-DISP-S4-005
-|Safe Zone band (4-10)
-|TBD
+|4,7,10 -> "Safe Zone" / green
+|PASS
 
 |UT-DISP-S4-006
-|Caution band (11-12)
-|TBD
+|11,12 -> "Caution" / orange (second band)
+|PASS
 
 |UT-DISP-S4-007
-|Critical Warm band (13-15)
-|TBD
+|13,14,15 -> "Critical Warm" / red
+|PASS
 
 |===
-
-**TBD / 7 PASS.**
-
 [[screen-4-manual-override-temperature-lane-b-results]]
 ==== Screen 4 — Manual Override (Temperature) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1qfwAMwe4Vue7K1bly5oXZURCnc2wvSva?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -869,11 +840,11 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S4-008
 |Confirm saves to Model, navigates
-|TBD
+|PASS
 
 |===
 
-**TBD / 1 PASS.**
+
 
 == Screen 5 — Thermal Stabilization
 
@@ -923,36 +894,32 @@ CUT: `Screen5View` (simulated cooling curve towards the Model's active target te
 [[screen-5-thermal-stabilization-lane-a-results]]
 ==== Screen 5 — Thermal Stabilization — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S5-002
-|Cooling simulation, no undershoot
-|TBD
+|Cools 0.02C/tick, clamps exactly at target (no undershoot)
+|PASS
 
 |UT-DISP-S5-003
-|Red colour far from target
-|TBD
+|>2.0C from target -> red
+|PASS
 
 |UT-DISP-S5-004
-|Orange colour approaching
-|TBD
+|0-2.0C from target -> orange
+|PASS
 
 |UT-DISP-S5-006
-|Progress ring 0-25°C mapping/clamp
-|TBD
+|Progress % mapping (0C->0%, 25C->100%, clamped outside range)
+|PASS
 
 |===
-
-**TBD / 4 PASS.**
 
 [[screen-5-thermal-stabilization-lane-b-results]]
 ==== Screen 5 — Thermal Stabilization — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1i_4nQuKUnOV9N_Vm6J_xr4_uBJfCHMfC?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -960,19 +927,19 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S5-001
 |Reads target temp from Model
-|TBD
+|PASS
 
 |UT-DISP-S5-005
 |Green + Continue at target
-|TBD
+|PASS
 
 |UT-DISP-S5-007
 |Continue navigates to Screen 6
-|TBD
+|PASS
 
 |===
 
-**TBD / 3 PASS.**
+
 
 == Screen 6 — Reservoir Fill
 
@@ -1007,28 +974,24 @@ CUT: `Screen6View` (simulated fill towards `targetVolume = 1000` mL).
 [[screen-6-reservoir-fill-lane-a-results]]
 ==== Screen 6 — Reservoir Fill — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S6-001
-|Fill simulation increments
-|TBD
+|Volume increases 2mL/tick while below target
+|PASS
 
 |UT-DISP-S6-002
-|Fill clamps at 1000 mL
-|TBD
+|Value clamps exactly at 1000 mL, no overshoot
+|PASS
 
 |===
-
-**TBD / 2 PASS.**
 
 [[screen-6-reservoir-fill-lane-b-results]]
 ==== Screen 6 — Reservoir Fill — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1DfND_mxk88Xq43qm7Xlf5v_XmK7TaKtJ?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1036,15 +999,14 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S6-003
 |Completion text/colour/button
-|TBD
+|PASS
 
 |UT-DISP-S6-004
 |Continue navigates to Screen 7
-|TBD
+|PASS
 
 |===
 
-**TBD / 2 PASS.**
 
 == Screen 7 — Priming / Bubble Detection (2-Stage)
 
@@ -1099,40 +1061,36 @@ CUT: `Screen7View` (Stage 1 Priming: 2×60 s cycles; Stage 2 Bubble Detection: 2
 [[screen-7-priming-bubble-detection-2-stage-lane-a-results]]
 ==== Screen 7 — Priming / Bubble Detection (2-Stage) — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S7-002
-|60-tick second decrement
-|TBD
+|60 ticks decrements secondsRemaining by exactly 1
+|PASS
 
 |UT-DISP-S7-003
-|Cycle 1→2 rollover (Stage 1)
-|TBD
+|Stage 1 Cycle 1 completion advances to Cycle 2 (resets to 60)
+|PASS
 
 |UT-DISP-S7-004
-|Stage 1→2 transition
-|TBD
+|Stage 1 Cycle 2 completion transitions to Stage 2 (10s, cycle reset)
+|PASS
 
 |UT-DISP-S7-006
-|Stage 3 freezes timers
-|TBD
+|STAGE_3_SUCCESS freezes tickCounter/timers (early-return guard)
+|PASS
 
 |UT-DISP-S7-007
-|Progress percentage formula
-|TBD
+|Progress ring reaches ~100% just before 60s cycle rollover
+|PASS
 
 |===
-
-**TBD / 5 PASS.**
 
 [[screen-7-priming-bubble-detection-2-stage-lane-b-results]]
 ==== Screen 7 — Priming / Bubble Detection (2-Stage) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/14UKVdz1tZEI1K00L6tiGhIWj_dY27VMT?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1140,19 +1098,19 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S7-001
 |Stage 1 initial state
-|TBD
+|PASS
 
 |UT-DISP-S7-005
 |Stage 2→3 transition, blank title
-|TBD
+|PASS
 
 |UT-DISP-S7-008
 |Continue navigates to Screen 8
-|TBD
+|PASS
 
 |===
 
-**TBD / 3 PASS.**
+
 
 == Screen 8 — Organ Details (Free-Text Entry)
 
@@ -1199,28 +1157,24 @@ CUT: `Screen8View` (six `Editable` fields wired to the shared `Keyboard`; `valid
 [[screen-8-organ-details-free-text-entry-lane-a-results]]
 ==== Screen 8 — Organ Details (Free-Text Entry) — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S8-002
-|Clamp-time placeholder blocks Continue
-|TBD
+|Placeholder "HH:MM" clamp time keeps Continue disabled
+|PASS
 
 |UT-DISP-S8-004
-|OrganID truncation end-to-end
-|TBD
+|40-char Organ ID truncates safely through full pipeline (real Model linked)
+|PASS
 
 |===
-
-**TBD / 2 PASS.**
 
 [[screen-8-organ-details-free-text-entry-lane-b-results]]
 ==== Screen 8 — Organ Details (Free-Text Entry) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:link:https://drive.google.com/drive/folders/1xLogSqxQwfP9aUngRAM2d1uBDjcgusnd?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1228,23 +1182,23 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S8-001
 |Continue disabled initially
-|TBD
+|PASS
 
 |UT-DISP-S8-003
 |All fields valid enables Continue
-|TBD
+|PASS
 
 |UT-DISP-S8-005
 |Cancel discards field edit
-|TBD
+|PASS
 
 |UT-DISP-S8-006
 |Continue saves all six fields
-|TBD
+|PASS
 
 |===
 
-**TBD / 4 PASS.**
+
 
 == Screen 9 — Preservation Mode Selection
 
@@ -1289,24 +1243,20 @@ CUT: `Screen9View` (Hypothermic / Dynamic / Static selection; branches navigatio
 [[screen-9-preservation-mode-selection-lane-a-results]]
 ==== Screen 9 — Preservation Mode Selection — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S9-006
-|No-selection Confirm — no navigation
-|TBD
+|(flagged) No mode selected: saves NONE but default branch has no navigation
+|PASS
 
 |===
-
-**TBD / 1 PASS.**
 
 [[screen-9-preservation-mode-selection-lane-b-results]]
 ==== Screen 9 — Preservation Mode Selection — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1PwLrKlNl3m7nzLJqYhCFEBUZYCiyY4Ob?usp=[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1314,27 +1264,27 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S9-001
 |Hypothermic selection styling
-|TBD
+|PASS
 
 |UT-DISP-S9-002
 |Mutually-exclusive selection
-|TBD
+|PASS
 
 |UT-DISP-S9-003
 |Hypothermic → Screen 10
-|TBD
+|PASS
 
 |UT-DISP-S9-004
 |Dynamic → Screen 12
-|TBD
+|PASS
 
 |UT-DISP-S9-005
 |Static → Screen 12
-|TBD
+|PASS
 
 |===
 
-**TBD / 5 PASS.**
+
 
 == Screen 10 — Oxygenator Connection
 
@@ -1374,28 +1324,24 @@ CUT: `Screen10View` (simulated oxygenator-detection progress bar).
 [[screen-10-oxygenator-connection-lane-a-results]]
 ==== Screen 10 — Oxygenator Connection — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S10-002
-|Progress increments every 2 ticks
-|TBD
+|Progress +1 every 2 ticks, reaches 100 at tick 200
+|PASS
 
 |UT-DISP-S10-004
-|Freezes after completion
-|TBD
+|Ticks after completion are a no-op (early-return guard)
+|PASS
 
 |===
-
-**TBD / 2 PASS.**
 
 [[screen-10-oxygenator-connection-lane-b-results]]
 ==== Screen 10 — Oxygenator Connection — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1obxwqSr2iV9Psymyr3SR4lIevKPamz6P?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1403,15 +1349,15 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S10-001
 |Initial state — hidden button
-|TBD
+|PASS
 
 |UT-DISP-S10-003
 |Completion state and message
-|TBD
+|PASS
 
 |===
 
-**TBD / 2 PASS.**
+
 
 == Screen 11 — Oxygenator Priming
 
@@ -1453,32 +1399,32 @@ CUT: `Screen11View` (2×60 s deairing cycles, then a 1.5 s hold before auto-navi
 [[screen-11-oxygenator-priming-lane-a-results]]
 ==== Screen 11 — Oxygenator Priming — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S11-002
-|60-tick second decrement
-|TBD
+|60 ticks decrements totalSeconds by 1
+|PASS
 
 |UT-DISP-S11-003
-|Cycle 1→2 rollover
-|TBD
+|Cycle 1 completion advances to Cycle 2 (resets to 60)
+|PASS
 
 |UT-DISP-S11-004
-|Cycle 2 completion state
-|TBD
+|Cycle 2 completion latches isComplete
+|PASS
+
+|(extra, spec Lane B)
+|Navigates to Screen 12 at exactly hold-tick 90 (UT-DISP-S11-005)
+|PASS
 
 |===
-
-**TBD / 3 PASS.**
 
 [[screen-11-oxygenator-priming-lane-b-results]]
 ==== Screen 11 — Oxygenator Priming — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/15Xl-Ecy3md66jqFWE9Dr9rUkm9zw88dF?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1486,15 +1432,14 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S11-001
 |Initial deairing state
-|TBD
+|PASS
 
 |UT-DISP-S11-005
 |1.5 s hold before auto-nav
-|TBD
+|PASS
 
 |===
 
-**TBD / 2 PASS.**
 
 == Screen 12 — Recommended Configuration
 
@@ -1526,7 +1471,7 @@ CUT: `Screen12View` (read-only display of `Model::activeTargetTemperature/Pressu
 [[screen-12-recommended-configuration-lane-b-results]]
 ==== Screen 12 — Recommended Configuration — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1QMrCbB-yba48OEt6aD5PbwOIpjzHSLkz?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1534,19 +1479,18 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S12-001
 |Displays Model temp/pressure
-|TBD
+|PASS
 
 |UT-DISP-S12-002
 |Tap Accept Configuration Button
-|TBD
+|PASS
 
 |UT-DISP-S12-003
 |Tap Modify Configuration Button
-|TBD
+|PASS
 
 |===
 
-**TBD / 3 PASS.**
 
 == Screen 13 — Advanced Manual Override
 
@@ -1593,36 +1537,32 @@ CUT: `Screen13View` (temperature 0-20°C and pressure 0-100 mmHg clamps).
 [[screen-13-advanced-manual-override-lane-a-results]]
 ==== Screen 13 — Advanced Manual Override — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S13-001
-|Temp Plus upper clamp (20)
-|TBD
+|Temperature upper clamp at 20
+|PASS
 
 |UT-DISP-S13-002
-|Temp Minus lower clamp (0)
-|TBD
+|Temperature lower clamp at 0
+|PASS
 
 |UT-DISP-S13-003
-|Press Plus upper clamp (100)
-|TBD
+|Pressure upper clamp at 100
+|PASS
 
 |UT-DISP-S13-004
-|Press Minus lower clamp (0)
-|TBD
+|Pressure lower clamp at 0
+|PASS
 
 |===
-
-**TBD / 4 PASS.**
 
 [[screen-13-advanced-manual-override-lane-b-results]]
 ==== Screen 13 — Advanced Manual Override — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1nm8lNv_u3hL_4LkR7r3mdpPA8kqYoMih?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1630,15 +1570,14 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S13-005
 |Reads initial values from Model
-|TBD
+|PASS
 
 |UT-DISP-S13-006
 |Confirm saves both, navigates
-|TBD
+|PASS
 
 |===
 
-**TBD / 2 PASS.**
 
 == Screen 14 — System ready
 
@@ -1658,7 +1597,7 @@ Screenshots/evidence: `TBD (Drive link)`
 [[screen-14-system-ready-lane-b-results]]
 ==== Screen 14 — System ready — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1Hzy51icWwomxguflJLJeFH00tQ_Vwir6?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1666,11 +1605,10 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S14-001
 |Smoke test only
-|TBD
+|PASS
 
 |===
 
-**TBD / 1 PASS.**
 
 == Screen 15 — Active Preservation (Dashboard)
 
@@ -1760,64 +1698,56 @@ CUT: `Screen15View` — the largest and most stateful screen: elapsed-time track
 [[screen-15-active-preservation-dashboard-lane-a-results]]
 ==== Screen 15 — Active Preservation (Dashboard) — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S15-001
-|Elapsed time rollover
-|TBD
+|Elapsed time rolls seconds -> minutes -> hours
+|PASS
 
 |UT-DISP-S15-002
-|Cycle count — Dynamic only
-|TBD
+|currentCycles increments only in Dynamic mode, per hour
+|PASS
 
 |UT-DISP-S15-003
-|Flush countdown 55→0→55
-|TBD
+|Flush countdown 55:00 -> 00:00 resets to 55:00 (Dynamic only)
+|PASS
 
 |UT-DISP-S15-004
-|Motor status — Hypothermic
-|TBD
+|Hypothermic mode: motor status always "Running"
+|PASS
 
 |UT-DISP-S15-005
-|Motor status — Dynamic minute 55
-|TBD
+|Dynamic mode: "Running" only at minute 55, else "Idle"
+|PASS
 
 |UT-DISP-S15-006
-|Motor status — Static/None
-|TBD
+|Static/None mode: always "Idle"
+|PASS
 
 |UT-DISP-S15-007
-|3× Warning alarm generation
-|TBD
+|Three alarms spawn sequentially every 5s, activeAlertCount -> 3
+|PASS
 
 |UT-DISP-S15-009
-|No alarms while critical active
-|TBD
+|Critical state bypasses further alarm generation, forces motor Idle
+|PASS
 
 |UT-DISP-S15-011
-|Dash markers in non-Dynamic/critical
-|TBD
+|Non-Dynamic/critical shows "--" / "--:--" placeholders
+|PASS
 
 |UT-DISP-S15-012
-|Battery status text thresholds
-|TBD
-
-|UT-DISP-S15-013
-|Battery runtime formula
-|TBD
+|Battery status thresholds (>=95, <=15) inclusive on correct side
+|PASS
 
 |===
-
-**TBD / 11 PASS.**
 
 [[screen-15-active-preservation-dashboard-lane-b-results]]
 ==== Screen 15 — Active Preservation (Dashboard) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1WQr2wd0eaLFKMM5m_mBPz8yN9e9_pPtR?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1825,23 +1755,23 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S15-008
 |4th alarm triggers Critical overlay
-|TBD
+|PASS
 
 |UT-DISP-S15-010
 |Acknowledge keeps critical lock
-|TBD
+|PASS
 
 |UT-DISP-S15-014
 |Battery overlay open/close
-|TBD
+|PASS
 
 |UT-DISP-S15-015
 |End Procedure stores time, navigates
-|TBD
+|PASS
 
 |===
 
-**TBD / 4 PASS.**
+
 
 == Screen 16 — Arrival Checklist
 
@@ -1896,40 +1826,36 @@ CUT: `Screen16View` (3-step sequential checklist with cascading resets).
 [[screen-16-arrival-checklist-lane-a-results]]
 ==== Screen 16 — Arrival Checklist — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S16-002
-|Step 1 toggles independently
-|TBD
+|Tap Step 1 toggles true
+|PASS
 
 |UT-DISP-S16-003
-|Step 2 gated on Step 1
-|TBD
+|Step 2 gated on Step 1 incomplete (no effect)
+|PASS
 
 |UT-DISP-S16-004
-|Un-toggling Step 2 cascades to Step 3
-|TBD
+|Un-toggle Step 2 cascades reset to Step 3
+|PASS
 
 |UT-DISP-S16-005
-|Un-toggling Step 1 cascades to 2 & 3
-|TBD
+|Un-toggle Step 1 cascades reset to Steps 2 and 3
+|PASS
 
 |UT-DISP-S16-006
-|Step 3 gated on Step 2
-|TBD
+|Step 3 gated on Step 2 incomplete (no effect)
+|PASS
 
 |===
-
-**TBD / 5 PASS.**
 
 [[screen-16-arrival-checklist-lane-b-results]]
 ==== Screen 16 — Arrival Checklist — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1Pcoq38qpcUp5lDFrjYRNvdYI-pVy7rFv?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -1937,19 +1863,18 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S16-001
 |Initial checklist state
-|TBD
+|PASS
 
 |UT-DISP-S16-007
 |Proceed enabled only when all 3 done
-|TBD
+|PASS
 
 |UT-DISP-S16-008
 |Proceed has no navigation handler (defect)
-|TBD
+|PASS
 
 |===
 
-**TBD / 3 PASS.**
 
 == Screen 17 — Transport Summary
 
@@ -1994,32 +1919,28 @@ CUT: `Screen17View` (post-session summary; loading animation then populated repo
 [[screen-17-transport-summary-lane-a-results]]
 ==== Screen 17 — Transport Summary — Lane A Results
 
-Console log: `TBD`
-
 [cols="1,3,1", options="header"]
 |===
 |Test ID |Test Case |Result
 
 |UT-DISP-S17-002
-|Progress reaches 100 once
-|TBD
+|Progress +1%/tick; showSummaryDashboard() fires exactly once at 100
+|PASS
 
 |UT-DISP-S17-005
-|Elapsed time formatting
-|TBD
+|Final elapsed time (2,34,17) formats as "2 h 34 min 17 sec"
+|PASS
 
 |UT-DISP-S17-006
-|Placeholder telemetry fields (defect)
-|TBD
+|(flagged, OI-DISP-04) Temp/pressure/alarm fields are hard-coded placeholders
+|PASS
 
 |===
-
-**TBD / 3 PASS.**
 
 [[screen-17-transport-summary-lane-b-results]]
 ==== Screen 17 — Transport Summary — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1ncRSR3S2vSZisKCoS7PA1HDNQbQk0Yu4?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -2027,19 +1948,19 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S17-001
 |Initial loading state
-|TBD
+|PASS
 
 |UT-DISP-S17-003
 |Summary reveal on completion
-|TBD
+|PASS
 
 |UT-DISP-S17-004
 |Organ/session fields from Model
-|TBD
+|PASS
 
 |===
 
-**TBD / 3 PASS.**
+
 
 == Screen 18 — Preservation Complete(Final Screen)
 
@@ -2059,7 +1980,7 @@ Screenshots/evidence: `TBD (Drive link)`
 [[screen-18-preservation-complete-final-screen-lane-b-results]]
 ==== Screen 18 — Preservation Complete(Final Screen) — Lane B Results
 
-Screenshots/evidence: `TBD (Drive link)`
+evidence:https://drive.google.com/drive/folders/1rOmgtZ1ApcbjimgbNn8adKYEIRUUkXG-?usp=drive_link[View Drive Folder]
 
 [cols="1,3,1", options="header"]
 |===
@@ -2067,11 +1988,11 @@ Screenshots/evidence: `TBD (Drive link)`
 
 |UT-DISP-S18-001
 |Smoke test only
-|TBD
+|PASS
 
 |===
 
-**TBD / 1 PASS.**
+
 
 ---
 
