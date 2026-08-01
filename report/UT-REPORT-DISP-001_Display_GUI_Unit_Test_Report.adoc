@@ -537,7 +537,7 @@ CUT: `Screen1View` (progress-loader driven auto-navigation to Screen 2).
 [[screen-1-startup-self-check-lane-b-results]]
 ==== Screen 1 — Startup / Self-Check — Lane B Results
 
-image::report/fgf.png[]
+image::fgf.png[]
 
 [cols="1,3,1", options="header"]
 |===
