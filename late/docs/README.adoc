@@ -1,0 +1,48 @@
+= DISPLAY_RIVERDI - Documentation
+
+Test documentation for the display node (Node 0x10) firmware.
+
+[cols="1,3",options="header"]
+|===
+|Document |Content
+|`test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc`
+|Test specification: strategy, environment, criteria, 103 test cases, traceability, evidence catalogue
+|`test_report/TR-DISP-002_Display_Node10_Test_Report.adoc`
+|Test report: build under test, results, defect register (ORPT-151 to ORPT-166), open items, evidence
+|`test_report/evidence/`
+|Screen and console evidence, named by figure ID (`FIG-xxx.png`)
+|===
+
+== Adding screen evidence
+
+Screens are documented once per screen state, not once per test case. Each test case refers to
+figure IDs (for example FIG-S15-01) from the evidence catalogue.
+
+. Take the screenshot or photo listed for the figure in the test report (section Evidence).
+. Save it as `test_report/evidence/<FIG-ID>.png`.
+. In the test report, replace the placeholder block of that figure with the `image::` line that
+  the placeholder shows.
+
+== Updating results
+
+Update the Result column in the test report's "Results by Area" tables, then update the
+Executive Summary counts. Every FAIL needs a Jira ORPT defect in the Defect Register.
+
+== Related test tools
+
+Test scripts and host tests are in `CM7/test/`:
+
+* `host_canlog/` - host unit test of the CAN logger (`bash run_host_test.sh`)
+* `can_conformance/` - automated CANopen conformance checks over the SLCAN bridge
+* `m1_bench_sim/` - bench simulator of the main controller (Node 0x04)
+* `sd_canlog/check_canlog.py` - SD card log integrity checker
+* `nmt_test/`, `rpdo_test/`, `sdo_test/`, `tpdo_test/` - single-purpose protocol scripts
+
+== Rendering
+
+[source,bat]
+----
+gem install asciidoctor
+asciidoctor test_specification\TS-DISP-002_Display_Node10_Test_Specification.adoc
+asciidoctor test_report\TR-DISP-002_Display_Node10_Test_Report.adoc
+----

@@ -1,0 +1,2090 @@
+= Test Specification - Display Node 0x10 (Riverdi HMI) Firmware
+:doctype: article
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 4
+:icons: font
+:source-highlighter: rouge
+:imagesdir: .
+:revnumber: 0.1
+:revdate: 2026-10-23
+:author: Nashid P
+:email: nashid@htic.iitm.ac.in
+:docref: TS-DISP-002
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+|Document ID |TS-DISP-002
+|Project |OrgPort - Riverdi HMI, Display Node 0x10 (STM32H757)
+|Revision |0.1 (2026-10-23)
+|Author |Nashid P
+|Status |Draft for review
+|===
+
+== Test Specification Version History
+
+[cols="1,1,2,2,4",options="header"]
+|===
+|Version |Date |Author |Reviewer |Change Summary
+|0.1 |2026-10-23 |Nashid P |(to be assigned) |Initial issue for the CAN-integrated display firmware
+|===
+
+== Purpose
+
+This document specifies the tests for the firmware of the OrgPort display node (CANopen Node
+0x10, Riverdi 7" STM32H757 board). It defines what is tested, how, in which environment, with
+which pass/fail criteria and with which evidence, so that the results recorded in the test
+report (TR-DISP-002) can be reviewed and repeated.
+
+The firmware under test integrates:
+
+* the TouchGFX operator interface (18 screens and shared containers);
+* the CANopen interface to the main controller (Node 0x04, NXP S32K312);
+* CAN traffic logging to the microSD card;
+* the copy of the session logs to a USB pen drive.
+
+== Scope
+
+=== In Scope
+
+* All display-owned firmware: `CM7/app`, `CM7/app_middleware`, `CM7/platform_if`,
+  `CM7/src/canopen` (port, bridge, object dictionary), `CM7/TouchGFX/gui` (Model, Views,
+  Presenters, containers) and the user sections of the CubeMX code.
+* The CANopen interface contract between Node 0x10 and Node 0x04 (PDO, SDO, heartbeat, NMT,
+  operator inputs, setpoints).
+* Behaviour of the display in combination with the main controller, where the outcome is visible
+  on the display or on the bus.
+
+=== Out of Scope
+
+* TouchGFX-generated code, the CANopenNode library, the ST HAL, FatFs and USB host libraries, and
+  the third-party keyboard component (only their integration is tested).
+* Internal behaviour of the main controller (Node 0x04). Defects of Node 0x04 found while testing
+  the display are recorded and handed to the Node 0x04 team.
+* Clinical validation of setpoints, timings and alarm limits.
+* The hypothermic oxygenated perfusion (HOPE) path, Screens 10 and 11: not used in this release
+  (see OI-12).
+
+== Applicable and Reference Documents
+
+[cols="1,3",options="header"]
+|===
+|Reference |Title
+|IEC 62304:2006+AMD1:2015 |Medical device software - Software life cycle processes
+|IEC 62366-1:2015 |Application of usability engineering to medical devices
+|ISO 14971:2019 |Application of risk management to medical devices
+|CIOET-ORGPORT-SWRS-2026-001 |OrgPort Software Requirements Specification (master)
+|CIOET-ORGPORT-SWRS-RVD-2026-001 |OrgPort SWRS - Riverdi HMI node (baseline; see OI-17)
+|CIOET-ORGPORT-SWDP-2026-001 |OrgPort Software Development Plan
+|CIOET-ORGPORT-CGD-2026-001 |CIOET OrgPort C Coding Guidelines
+|Node04_HMI_Integration_QA_2026-09-29 |Node 0x04 / HMI integration questions and answers (Q1-Q18)
+|Node 0x04 answers for Node 0x10, 2026-09-30 |Interface clarifications from the Node 0x04 team
+|UT-SPEC-DISP-001 / UT-REPORT-DISP-001 |Previous GUI-only unit test specification and report
+|TR-DISP-002 |Test report for this specification
+|===
+
+== Definitions and Abbreviations
+
+[cols="1,3",options="header"]
+|===
+|Term |Definition
+|Node 0x04 |Main controller (NXP S32K312), CANopen node 0x04
+|Node 0x10 |Display node (this firmware), CANopen node 0x10
+|Bench simulator |PC program that plays Node 0x04 over CAN (`test/m1_bench_sim`)
+|SLCAN bridge |Arduino UNO R4 with CAN shield running `test/arduino_slcan_bridge`
+|DUT |Device under test (Riverdi board with the firmware under test)
+|HIL |Hardware in the loop: DUT connected to the real Node 0x04 hardware
+|OD |CANopen object dictionary
+|PDO / SDO |Process / service data object
+|NMT |CANopen network management
+|EMCY |CANopen emergency message
+|RC |Release candidate build
+|TC |Test case
+|OI |Open item (feature, requirement or question not yet resolved)
+|===
+
+== System Under Test
+
+=== Overview
+
+[cols="1,3",options="header"]
+|===
+|Item |Description
+|Hardware |Riverdi 7" display module, STM32H757 (Cortex-M7 core used), FDCAN1, SDMMC1 microSD
+slot, USB OTG HS in host mode (MSC)
+|RTOS |FreeRTOS (CMSIS-RTOS2), 1 kHz tick
+|GUI |TouchGFX 4.26.1, MVP architecture, 18 screens, 60 Hz tick
+|CANopen |CANopenNode v4, Node ID 0x10, 500 kbit/s
+|Logging |All received (after hardware filter) and transmitted CAN frames, CSV with chained
+CRC-16, one file per session, on FAT32 microSD
+|USB |Copy of all `*.CSV` logs to `ORGPORT_LOGS\` on a FAT32 pen drive, on Screen 18 only
+|===
+
+=== Firmware Architecture
+
+[cols="1,2,3",options="header"]
+|===
+|Layer |Location |Content
+|Platform interface (PIF) |`platform_if/` |Function-pointer contracts: CAN, time, IRQ, SD, USB
+|Middleware (MW) |`app_middleware/` |HAL-based implementations: `mw_can`, `mw_osif`, `mw_sd`, `mw_usb`
+|Application |`app/`, `src/canopen/` |CANopen start-up and tasks, CAN bridge to the GUI, SD card
+task, CAN logger, USB copy, wiring (`app_wiring.c`)
+|GUI |`TouchGFX/gui/` |Model (single data access point), screens, status bar, alarm cards, USB popup
+|===
+
+=== CANopen Interface with Node 0x04
+
+[cols="1,1,1,3",options="header"]
+|===
+|Object |COB-ID |Direction |Content
+|Heartbeat |0x710 |Tx |Producer 500 ms
+|Heartbeat consumer |0x704 |Rx |Node 0x04, timeout 600 ms
+|RPDO1 |0x181 |Rx |workflow_state, alarm_flags (32 bit), session_hours, gps_fix
+|RPDO2 |0x281 |Rx |perfusate and chamber temperature (x0.01 degC), humidity, bubble, level
+|RPDO3 |0x381 |Rx |perfusate/chamber temperature 2, accelerometer, hall, compressor
+|RPDO4 |0x481 |Rx |GPS latitude and longitude (float32)
+|RPDO5 |0x581 |Rx |Debug event (event id, severity, source, payload)
+|RPDO6 |0x681 |Rx |Boot health (reset reason, safe-mode reason, boot number)
+|RPDO7 |0x781 |Rx |Pressure 1/2, pump RPM, priming status, phase seconds left
+|TPDO1 |0x190 |Tx |confirm_counter, confirmed_state, auth_status, organ_type, mode, organ_weight
+|SDO server |0x610 / 0x590 |Rx/Tx |Access to the display OD
+|SDO client |0x604 / 0x584 |Tx/Rx |Writes to Node 0x04: 0x2200 subs 7-12 (acknowledge,
+pause-resolve, motor diagnosis), 0x2201 (setpoints)
+|===
+
+RPDO1-RPDO4 use a 3 s event-timer timeout. The display does not wait for NMT Start: it goes
+Operational by itself when the Node 0x04 heartbeat reports Operational.
+
+=== Workflow States and Screens
+
+[cols="1,2,3",options="header"]
+|===
+|Node 0x04 state |Value |Display screens
+|IDLE |0 |Screen 1 Start-up
+|AUTHENTICATION |1 |Screen 2 Authentication
+|CONFIGURATION |2 |Screens 3 Organ Type, 4 Manual Override, 5 Thermal Stabilisation
+|PRIMING |3 |Screens 6 Reservoir Fill, 7 Priming / Bubble Detection
+|BUBBLE_MANAGEMENT |4 |Screen 7 (success panel)
+|ORGAN_LOADING |5 |Screens 8 Organ Details, 9 Preservation Mode, 12 Recommended
+Configuration, 13 Advanced Override, 14 System Ready
+|PRESERVATION |6 |Screen 15 Dashboard
+|ARRIVAL |7 |Screen 16 Arrival Checklist
+|REPORT |8 |Screens 17 Transport Summary, 18 Power Off / USB copy
+|===
+
+== Test Strategy
+
+=== Test Levels
+
+[cols="1,2,3",options="header"]
+|===
+|Level |Environment |Purpose
+|L1 Build and inspection |BUILD, INSP |Builds, coding guidelines, architecture, interface contract
+|L2 Host unit test |HOST |Logic that can run on a PC with the real source (CAN logger)
+|L3 Protocol |BENCH |CANopen behaviour of the DUT with scripts over the SLCAN bridge
+|L4 System, bench |BENCH, TGFX |Complete workflow with the Node 0x04 bench simulator; GUI walk-through
+in the TouchGFX simulator
+|L5 System, hardware |HIL |Complete workflow with the real Node 0x04 and sensors
+|===
+
+=== Test Methods
+
+[cols="1,3",options="header"]
+|===
+|Method |Description
+|A - Automated |Runs without operator judgement; pass/fail decided by the tool output.
+|S - Scripted (bench) |A script over the SLCAN bridge stimulates or observes the bus; the operator checks the printed result.
+|M - Manual |The tester performs the steps on the DUT and compares with the expected result.
+|I - Inspection |Review of source code, configuration or documents.
+|===
+
+=== Test Environments
+
+[cols="1,4",options="header"]
+|===
+|Code |Environment
+|BUILD |Build PC (STM32CubeIDE headless build, TouchGFX simulator build)
+|HOST |Host PC unit test (MinGW GCC, real module source with stubs)
+|TGFX |TouchGFX PC simulator (built-in Node 0x04 stand-in)
+|BENCH |Target board + Node 0x04 bench simulator over the SLCAN bridge
+|HIL |Target board + Node 0x04 main controller (S32K312) hardware
+|INSP |Inspection / review of source and configuration
+|===
+
+[[evidence-strategy]]
+=== Evidence Strategy
+
+Screen evidence is collected *per screen state, not per test case*. A fixed catalogue of
+reference figures (FIG-xxx, see <<evidence-catalogue>>) covers every screen and popup state once.
+Each test case names the figures that show its expected result. One screenshot can therefore serve
+several test cases, and the number of images stays small.
+
+* Figures are stored as `test_report/evidence/<FIG-ID>.png`. Until a figure is captured, the test
+  report shows a marked placeholder in its place. A missing figure does not change a test result;
+  the result is decided by the expected result of the test case.
+* Alarm and fault conditions that cannot be produced on the real hardware (for example motor
+  failure, refrigeration failure, pressure sensor faults) are produced with the Node 0x04 bench
+  simulator. Their evidence is the bench CAN trace (`m1_bench_sim/logs`) or the SD card log, plus
+  the representative figures of the alarm centre (FIG-ALM-01) and of the decision popup
+  (FIG-ALM-03, FIG-ALM-05). No separate image is kept per alarm or per popup type. Annex A
+  lists every alarm bit that TC-ALM-002 covers.
+* Bus-level results are evidenced by script console output, CAN traces or SD card logs, verified
+  with `check_canlog.py` where applicable.
+
+=== Defect Management
+
+Every failed test case is linked to a defect in Jira project ORPT (ORPT-151 onwards for this
+campaign). Defects of Node 0x04 found during display testing are raised in the same project and
+assigned to the Node 0x04 team.
+
+[cols="1,3",options="header"]
+|===
+|Severity |Definition
+|Critical |Prevents a session from starting or continuing, or can mislead the operator about the
+organ state; no workaround
+|Major |Function does not work as specified or wrong data is sent/shown; workaround exists
+|Minor |Cosmetic or usability issue without effect on data or control
+|===
+
+== Test Environment
+
+=== Hardware
+
+[cols="1,3",options="header"]
+|===
+|Item |Description
+|DUT |Riverdi 7" STM32H757 display module with the firmware under test
+|Main controller |Node 0x04 S32K312 board with sensors, pump and compressor (HIL only)
+|CAN interface |Arduino UNO R4 + CAN shield, SLCAN firmware `arduino_slcan_bridge.ino` (COM7, 500 kbit/s)
+|CAN bus |Twisted pair, 120 ohm termination at both ends
+|Debug probe |ST-LINK (on-board), STM32CubeIDE Live Expressions for diagnostic variables
+|Storage |microSD card FAT32 (8-32 GB); USB pen drive FAT32
+|===
+
+=== Software and Tools
+
+[cols="1,3",options="header"]
+|===
+|Item |Version / Location
+|STM32CubeIDE |1.19.0 (GCC 13.3.1 arm-none-eabi)
+|TouchGFX |4.26.1 (Designer and simulator)
+|Python |3.x with python-can and pyserial
+|`test/m1_bench_sim/m1_bench_sim.py`, `m1_bench_trace.py`, `m1_bench_gui.py` |Node 0x04 bench simulator
+(console, trace, window versions)
+|`test/can_conformance/can_conformance_test.py` |Automated CANopen conformance checks (TC-CAN-001..009)
+|`test/host_canlog/` |Host unit test of the CAN logger (TC-HST-001..006)
+|`test/sd_canlog/check_canlog.py` |SD log integrity checker
+|`test/nmt_test`, `rpdo_test`, `sdo_test`, `tpdo_test` |Single-purpose protocol scripts
+|`test/arduino_can_sniffer` |Passive bus logger
+|===
+
+=== General Preconditions
+
+. The DUT runs the build identified in the test report, flashed with STM32CubeIDE.
+. Unless a test case says otherwise, the SD card is inserted and no USB stick is connected.
+. Bench tests: the bench simulator is started before the DUT is powered; the real Node 0x04
+  never sends NMT commands, so protocol tests that depend on that behaviour use `--no-nmt-start`.
+. HIL tests: Node 0x04 runs its integration release, built without test bypass macros (see OI-16).
+. The TouchGFX simulator tests use the simulator build of the same source.
+
+=== Entry, Suspension and Exit Criteria
+
+[cols="1,3",options="header"]
+|===
+|Criterion |Definition
+|Entry |Both builds pass (TC-BLD-001/002); the DUT boots to Screen 1; test tools available
+|Suspension |A Critical defect blocks the remaining cases of an area; the SLCAN bridge stops
+responding (restart the bridge and repeat the affected case)
+|Resumption |Defect fixed or workaround agreed; tools working
+|Exit |All test cases executed or justified as BLOCKED; all FAIL results have a defect; no open
+Critical defect for release
+|===
+
+=== Pass / Fail Criteria
+
+A test case passes when every expected result is met. Any deviation is a failure and is recorded
+with a defect. A test case is BLOCKED when a feature or dependency it needs does not exist yet
+(reference to the open item), and NOT RUN when it has not been executed on the build under test.
+
+== Test Cases
+
+=== BLD - Build, Static Analysis and Coding Guidelines
+
+[[TC-BLD-001]]
+==== TC-BLD-001 - Target firmware builds without errors
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-07
+|Method / Environment |Automated / BUILD
+|Preconditions |Clean checkout of the release candidate; STM32CubeIDE 1.19.0 installed.
+|Test steps a|
+. Run a clean headless build of project Riverdi_70STM32H7_CM7, configuration Debug.
+. Inspect the build log for errors and warnings.
+|Expected result a|
+* Build finishes with 0 errors.
+* Only accepted warnings remain (linker RWX segment warning from the ST linker script).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-BLD-002]]
+==== TC-BLD-002 - TouchGFX simulator builds without errors
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-05
+|Method / Environment |Automated / BUILD
+|Preconditions |TouchGFX 4.26.1 with MinGW toolchain installed.
+|Test steps a|
+. Build the simulator with the TouchGFX simulator makefile (simulator/gcc/Makefile).
+. Start build/bin/simulator.exe.
+|Expected result a|
+* Build exits with status 0.
+* Simulator opens on Screen 1.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-BLD-003]]
+==== TC-BLD-003 - Coding guideline conformance of display-owned code
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-07
+|Method / Environment |Inspection / INSP
+|Preconditions |CIOET-ORGPORT-CGD-2026-001 available.
+|Test steps a|
+. Review app/, app_middleware/, platform_if/, src/canopen/ (except CANopenNode) and gui/ (except TouchGFX-generated and third-party keyboard files) against the guideline.
+. Run the scripted line-length check (100 characters) on the same files.
+|Expected result a|
+* File headers, Doxygen blocks, naming prefixes (PIF_/MW_/APP_), Allman braces and named constants are applied.
+* No line is longer than 100 characters.
+* Deviations (MISRA 15.5 single exit in C modules) are documented in the file headers.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-BLD-004]]
+==== TC-BLD-004 - Layered architecture (PIF / middleware / application)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-07
+|Method / Environment |Inspection / INSP
+|Preconditions |Source tree of the release candidate.
+|Test steps a|
+. Search the application modules (app/sdcard, app/usb, app/canopen) for direct HAL, CMSIS, BSP, RTOS or USB host calls.
+. Check that the platform services are injected through app/app_wiring.c and the PIF contracts in platform_if/.
+|Expected result a|
+* No direct HAL/CMSIS/BSP/RTOS/USB-host call in the application modules.
+* All platform services reach the application through APP_Wiring_Init() or APP_CanOpen_Init().
+|Evidence |Console output / log / trace
+|===
+
+[[TC-BLD-005]]
+==== TC-BLD-005 - No dynamic memory allocation
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-06
+|Method / Environment |Inspection / INSP
+|Preconditions |Source tree of the release candidate.
+|Test steps a|
+. Search display-owned C and C++ sources for malloc, calloc, realloc, free and new.
+|Expected result a|
+* No dynamic allocation in display-owned code; all buffers and RTOS objects are static.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-BLD-006]]
+==== TC-BLD-006 - GUI widget and handler names match the generated code
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-07
+|Method / Environment |Automated / BUILD
+|Preconditions |TouchGFX Designer project regenerated after the naming update.
+|Test steps a|
+. Compare the 389 planned widget, handler and interaction names with the .touchgfx project.
+. Build both targets.
+|Expected result a|
+* All planned names are present in the project.
+* Both builds pass; every handler is marked override, so a name mismatch fails the build.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-BLD-007]]
+==== TC-BLD-007 - Object dictionary matches the Node 0x04 interface contract
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-02
+|Method / Environment |Inspection / INSP
+|Preconditions |Display OD (OrgPort_STM32_HMI_Node10.xdd / OD.c) and Node 0x04 OD of the integrated release.
+|Test steps a|
+. Compare PDO COB-IDs, mappings and transmission types, heartbeat producer/consumer times, SDO channels, and the sizes and access of 0x2200 and 0x2201 on both nodes.
+|Expected result a|
+* Every RPDO of the display matches the corresponding TPDO of Node 0x04 (COB-ID, length, mapping).
+* Display TPDO1 0x190 matches the RPDO of Node 0x04.
+* Heartbeat: display produces 500 ms, consumes Node 0x04 at 600 ms; Node 0x04 produces 200 ms and consumes the display at 1500 ms.
+|Evidence |Console output / log / trace
+|===
+
+=== HST - Host Unit Tests - SD Card CAN Logger
+
+[[TC-HST-001]]
+==== TC-HST-001 - Logging with no Node 0x04 on the bus
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HOST
+|Preconditions |Host test built from the real app/sdcard/can_log.c (test/host_canlog).
+|Test steps a|
+. Run scenario no_controller: only display heartbeats are produced.
+|Expected result a|
+* SESSION_0000_IDLE_1.CSV with 20 lines is written; no session file; no dropped frames.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-HST-002]]
+==== TC-HST-002 - Idle logging while Node 0x04 stays in IDLE
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HOST
+|Preconditions |Host test built from the real app/sdcard/can_log.c (test/host_canlog).
+|Test steps a|
+. Run scenario idle: Node 0x04 traffic with workflow_state 0.
+|Expected result a|
+* Frames are written to the IDLE file with correct line numbers and chained CRC.
+* No session file is opened.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-HST-003]]
+==== TC-HST-003 - Complete session file with END line
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HOST
+|Preconditions |Host test built from the real app/sdcard/can_log.c (test/host_canlog).
+|Test steps a|
+. Run scenario full: IDLE, session states 1..8, back to IDLE.
+|Expected result a|
+* SESSION_0001_CANLOG.CSV is created with the ~4 s pre-roll, ends with an END line (lines, dropped, session, part).
+* A new SESSION_0001_IDLE_1.CSV opens after the END.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-HST-004]]
+==== TC-HST-004 - Queue overflow and power cut during a session
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HOST
+|Preconditions |Host test built from the real app/sdcard/can_log.c (test/host_canlog).
+|Test steps a|
+. Run scenario cut: session to PRESERVATION, a burst of 1100 frames (more than the 1024-frame queue), then the process ends without closing the file.
+|Expected result a|
+* SESSION_0002_CANLOG.CSV contains a DROPPED line (79 messages lost) and no END line.
+* All lines written before the cut pass the CRC chain check.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-HST-005]]
+==== TC-HST-005 - Resume after a power cut continues as _PART2
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HOST
+|Preconditions |Host test built from the real app/sdcard/can_log.c (test/host_canlog).
+|Test steps a|
+. Run scenario resume after cut: first state seen is non-IDLE.
+|Expected result a|
+* SESSION_0002_CANLOG_PART2.CSV is opened and ends with END (session=2 part=2).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-HST-006]]
+==== TC-HST-006 - New session after the controller restarted in IDLE
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HOST
+|Preconditions |Host test built from the real app/sdcard/can_log.c (test/host_canlog).
+|Test steps a|
+. Run scenario new_after_cut: IDLE first, then a new session.
+|Expected result a|
+* SESSION_0003_CANLOG.CSV is opened (new number, no _PART); a following full run uses SESSION_0004; file names sort in time order.
+|Evidence |Console output / log / trace
+|===
+
+=== CAN - CANopen Protocol and Node 0x04 Interface
+
+[[TC-CAN-001]]
+==== TC-CAN-001 - Heartbeat production 0x710 every 500 ms
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-05
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display powered; SLCAN bridge on the bus.
+|Test steps a|
+. Run test/can_conformance/can_conformance_test.py (check C1), or record 10 s of traffic.
+. Measure the interval between consecutive 0x710 frames.
+|Expected result a|
+* 0x710 frames, DLC 1, interval 500 ms +/- 10 %.
+* Byte 0 shows the NMT state (0x05 when Operational).
+|Evidence |<<FIG-CAN-01,FIG-CAN-01>>
+|===
+
+[[TC-CAN-002]]
+==== TC-CAN-002 - Boot-up message and Pre-Operational state
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-01
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display powered off; no Node 0x04 heartbeat on the bus.
+|Test steps a|
+. Start recording, then power on the display.
+. Observe 0x710 for 5 s.
+|Expected result a|
+* A boot-up frame 0x710 [00] is sent once.
+* Without a Node 0x04 heartbeat the display stays Pre-Operational (0x710 [7F]).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-003]]
+==== TC-CAN-003 - Autonomous transition to Operational when Node 0x04 is Operational
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-01 (deviation, see OI-17)
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display Pre-Operational; bench simulator started with --no-nmt-start.
+|Test steps a|
+. Send Node 0x04 heartbeat 0x704 [05] every 200 ms without any NMT command.
+|Expected result a|
+* The display enters Operational (0x710 [05]) within 2 s without receiving NMT Start.
+* RPDO processing starts (screen data updates).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-004]]
+==== TC-CAN-004 - NMT Start command accepted
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-01
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display powered.
+|Test steps a|
+. Send NMT Start 0x000 [01 10] (test/nmt_test/nmt_test.py).
+. Read the next heartbeat.
+|Expected result a|
+* Display reports Operational (0x05).
+|Evidence |<<FIG-CAN-02,FIG-CAN-02>>
+|===
+
+[[TC-CAN-005]]
+==== TC-CAN-005 - RPDO1 0x181 reception and storage
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-02
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display Operational.
+|Test steps a|
+. Send 0x181 with workflow_state = 0x42 (test/rpdo_test/rpdo_test.py).
+. Read 0x2100 sub1 by SDO from the display.
+|Expected result a|
+* The SDO reply returns 0x42: the RPDO was received and stored in the OD.
+|Evidence |<<FIG-CAN-03,FIG-CAN-03>>
+|===
+
+[[TC-CAN-006]]
+==== TC-CAN-006 - RPDO2-RPDO7 decoding and scaling
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-02
+|Method / Environment |Manual / BENCH
+|Preconditions |Full bench session running.
+|Test steps a|
+. From the bench simulator set: perfusate/chamber temperatures (0x281), humidity and pressure (0x381/0x2120/0x2130), GPS fix and coordinates (0x481), boot health (0x681), pump RPM, priming status and phase seconds (0x781).
+. Compare each value with the dashboard and priming screens.
+|Expected result a|
+* Temperatures are shown in degC with 0.1 resolution (raw x0.01).
+* Pressure is shown in mmHg (converted from kPa x0.1).
+* GPS icon follows gps_fix; pump speed and priming countdowns follow 0x781.
+|Evidence |<<FIG-S15-01,FIG-S15-01>>, <<FIG-S07-01,FIG-S07-01>>
+|===
+
+[[TC-CAN-007]]
+==== TC-CAN-007 - RPDO timeout handling (3 s event timer)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-02
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session on Screen 15.
+|Test steps a|
+. Stop TPDO1-4 of the bench simulator while keeping its heartbeat.
+|Expected result a|
+* Values whose PDO timed out are not shown as fresh data (shown as `--` or held per design); no crash or freeze.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-008]]
+==== TC-CAN-008 - SDO server on 0x610/0x590
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-03
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display Operational.
+|Test steps a|
+. Read 0x1018 sub1 (vendor ID) with test/sdo_test/sdo_test.py.
+. Write 0x2200 sub4 (organ_type) = 2 with test/tpdo_test/tpdo_test.py.
+|Expected result a|
+* Read returns 0x0CBCC88A.
+* Write is confirmed with 0x60.
+|Evidence |<<FIG-CAN-04,FIG-CAN-04>>
+|===
+
+[[TC-CAN-009]]
+==== TC-CAN-009 - TPDO1 0x190 operator input frame
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-04
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display Operational.
+|Test steps a|
+. Change an operator input (e.g. organ selection) and watch 0x190 (tpdo_watch.py).
+. Leave the display idle and watch 0x190 for 10 s.
+|Expected result a|
+* 0x190, DLC 7: confirm_counter, confirmed_state, auth_status, organ_type, mode, organ_weight (uint16).
+* Event-driven frame on change (inhibit 50 ms) plus a keepalive about once per second.
+* confirmed_state is 0xFF when no confirm is pending.
+|Evidence |<<FIG-CAN-04,FIG-CAN-04>>, <<FIG-CAN-05,FIG-CAN-05>>
+|===
+
+[[TC-CAN-010]]
+==== TC-CAN-010 - Confirm handshake (counter + current state)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-04
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session in IDLE.
+|Test steps a|
+. Press Continue on Screen 1 and record 0x190 and 0x181.
+|Expected result a|
+* confirm_counter increments once and confirmed_state equals the current workflow_state.
+* After Node 0x04 changes workflow_state, the display returns confirmed_state to 0xFF.
+* The next screen opens only after the state change is received.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-011]]
+==== TC-CAN-011 - Confirm timeout when Node 0x04 does not accept
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-04
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench simulator configured to reject the IDLE confirm (or Node 0x04 with a latched sensor fault).
+|Test steps a|
+. Press Continue on Screen 1 and wait 5 s.
+|Expected result a|
+* After 3 s without a state change the display stops waiting and lets the operator retry.
+* The operator is told why the session did not start.
+|Evidence |<<FIG-S01-02,FIG-S01-02>>
+|===
+
+[[TC-CAN-012]]
+==== TC-CAN-012 - SDO client actions to Node 0x04 (ack, pause-resolve, diag)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-04
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session; alarm bits 0, 16 and 18 raised from the bench GUI.
+|Test steps a|
+. Acknowledge an alarm card; answer the motor-check popup; answer the resume popup.
+. Record 0x604/0x584.
+|Expected result a|
+* 0x2200 subs 8/7 (ack_mask, ack_counter), 10/9 (pause action, counter) and 12/11 (diag response, counter) are written: payload first, counter last.
+* At least 200 ms between actions; failed writes are retried (2 retries, 500 ms timeout).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-013]]
+==== TC-CAN-013 - Setpoint write to Node 0x04 object 0x2201
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-04
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session reaching Screen 5 and Screen 14.
+|Test steps a|
+. Open Screen 5; later open Screen 14 after changing values on Screen 13.
+. Record SDO writes to 0x2201.
+|Expected result a|
+* 0x2201 sub1 = temperature x100, sub2 = pressure x10, sub3 counter written last, on Screen 5 entry and on Screen 14 entry.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-014]]
+==== TC-CAN-014 - Rejected setpoint is detected by the display
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-10
+|Method / Environment |Manual / BENCH
+|Preconditions |Node 0x04 restores its previous setpoint when a value is out of range.
+|Test steps a|
+. Send a setpoint outside 0-15 degC / 0-50 mmHg from Screen 13 and confirm.
+|Expected result a|
+* The display reads 0x2201 back, detects the rejection and informs the operator.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-015]]
+==== TC-CAN-015 - Hardware receive filter rejects unrelated frames
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-02
+|Method / Environment |Manual / BENCH
+|Preconditions |Display Operational; SD card inserted.
+|Test steps a|
+. Send frames with IDs not used by the display (e.g. 0x123, 0x5FF) for 10 s.
+. Check the SD log with check_canlog.py.
+|Expected result a|
+* The frames are not received (not present in the SD log) and the display is unaffected.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-016]]
+==== TC-CAN-016 - CANopen communication reset (NMT 0x82)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-01
+|Method / Environment |Scripted (bench) / BENCH
+|Preconditions |Display Operational in a session.
+|Test steps a|
+. Send NMT Reset Communication 0x000 [82 10].
+. Observe heartbeat and PDO traffic for 5 s.
+|Expected result a|
+* The display sends boot-up, returns to Operational and resumes PDO traffic.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-CAN-017]]
+==== TC-CAN-017 - Node 0x04 start-up when it is alone on the bus
+
+[cols="1,4"]
+|===
+|Traces to |Integration
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware and display both powered off.
+|Test steps a|
+. Power on Node 0x04 first, then the display after about 3 s.
+. Observe the Node 0x04 heartbeat 0x704 and EMCY frames.
+|Expected result a|
+* Node 0x04 reaches Operational (0x704 [05]) once the display joins, and the display leaves the controller-offline state.
+|Evidence |<<FIG-SB-02,FIG-SB-02>>
+|===
+
+=== WFL - Workflow and Screen Behaviour
+
+[[TC-WFL-001]]
+==== TC-WFL-001 - Screen 1 idle content
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01
+|Method / Environment |Manual / BENCH
+|Preconditions |Display powered with Node 0x04 in IDLE.
+|Test steps a|
+. Observe Screen 1 after power-on.
+|Expected result a|
+* Software and hardware versions are shown; Continue is visible; status bar shows time, battery, GPS and alert count.
+|Evidence |<<FIG-S01-01,FIG-S01-01>>, <<FIG-SB-01,FIG-SB-01>>
+|===
+
+[[TC-WFL-002]]
+==== TC-WFL-002 - Screen 1 Continue starts a session
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01
+|Method / Environment |Manual / BENCH
+|Preconditions |Node 0x04 Operational in IDLE.
+|Test steps a|
+. Press Continue.
+|Expected result a|
+* The validation popup with progress ring is shown; once Node 0x04 enters AUTHENTICATION and the ring is full, Screen 2 opens.
+|Evidence |<<FIG-S01-02,FIG-S01-02>>
+|===
+
+[[TC-WFL-003]]
+==== TC-WFL-003 - Screen 1 Continue while Node 0x04 is offline
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Node 0x04 heartbeat stopped.
+|Test steps a|
+. Press Continue.
+|Expected result a|
+* Nothing is sent and the button stays usable; the controller-offline banner is shown.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-004]]
+==== TC-WFL-004 - Screen 1 resumes the screen of a running session
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01
+|Method / Environment |Manual / BENCH
+|Preconditions |Display rebooted while Node 0x04 is in a session state.
+|Test steps a|
+. Power-cycle the display only, for each state: AUTHENTICATION, CONFIGURATION, PRIMING, BUBBLE_MANAGEMENT, ORGAN_LOADING, PRESERVATION, ARRIVAL, REPORT.
+|Expected result a|
+* Screen 1 jumps to Screen 2, 3, 6, 7, 8, 15, 16 and 17 respectively.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-005]]
+==== TC-WFL-005 - Screen 1 sensor and subsystem validation
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware connected.
+|Test steps a|
+. Press Continue and observe the validation popup.
+|Expected result a|
+* Sensor and subsystem readiness (pass / fail / pending) is presented to the operator.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-006]]
+==== TC-WFL-006 - Screen 2 PIN entry and masking
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-02
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 2 shown.
+|Test steps a|
+. Press Enter PIN; type digits; use Delete; type 6 digits; press OK.
+|Expected result a|
+* Each digit fills one of six circles (masked); Delete removes the last digit; OK is only effective with 6 digits; while waiting further keys are ignored.
+|Evidence |<<FIG-S02-01,FIG-S02-01>>, <<FIG-S02-02,FIG-S02-02>>
+|===
+
+[[TC-WFL-007]]
+==== TC-WFL-007 - Screen 2 authentication against Node 0x04
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-02
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 2 with Node 0x04 in AUTHENTICATION.
+|Test steps a|
+. Enter 6 digits and press OK.
+|Expected result a|
+* auth_status = 1 and the confirm are sent; Screen 3 opens when Node 0x04 enters CONFIGURATION.
+* A wrong PIN is rejected with an attempt counter and lockout.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-008]]
+==== TC-WFL-008 - Screen 3 organ selection and defaults
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 3 shown.
+|Test steps a|
+. Select Heart, Liver and Kidney in turn.
+|Expected result a|
+* The selected card is highlighted; target temperature 8 degC; pressure 20 / 3 / 21 mmHg for Heart / Liver / Kidney; Confirm and Change Configuration become usable.
+|Evidence |<<FIG-S03-02,FIG-S03-02>>, <<FIG-S03-01,FIG-S03-01>>
+|===
+
+[[TC-WFL-009]]
+==== TC-WFL-009 - Screen 4 temperature override bands
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-10
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 4 shown.
+|Test steps a|
+. Step the temperature from 0 to 15 degC with +/-, then try below 0 and above 15.
+|Expected result a|
+* Value is limited to 0-15 degC.
+* Status colour: 0-2 red (critical cold), 3 orange, 4-10 green (safe), 11-12 orange, 13-15 red (critical warm).
+* Confirm opens Screen 5.
+|Evidence |<<FIG-S04-01,FIG-S04-01>>
+|===
+
+[[TC-WFL-010]]
+==== TC-WFL-010 - Screen 5 thermal stabilisation gate
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 5; setpoint 8 degC; bench simulator temperature sweep.
+|Test steps a|
+. Run the bench simulator sweep from 10 to 2 degC in 0.25 degC steps.
+|Expected result a|
+* Setpoints are written to 0x2201 on entry.
+* Continue is enabled only while the perfusate temperature is within +/-0.5 degC of the target.
+* A faulted sensor shows `--` and never enables Continue.
+* Continue sends the CONFIGURATION confirm and opens Screen 6.
+|Evidence |<<FIG-S05-01,FIG-S05-01>>, <<FIG-S05-02,FIG-S05-02>>
+|===
+
+[[TC-WFL-011]]
+==== TC-WFL-011 - Screen 6 reservoir fill follows Node 0x04
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-06
+|Method / Environment |Manual / BENCH
+|Preconditions |Node 0x04 in PRIMING, fill phase.
+|Test steps a|
+. Observe Screen 6 until the level sensor trips; repeat with a failed fill (refill attempt).
+|Expected result a|
+* Fill time and status follow 0x781; Screen 7 opens 2 s after the fill completes, without a button press.
+* A refill shows the attempt number.
+|Evidence |<<FIG-S06-01,FIG-S06-01>>, <<FIG-S06-02,FIG-S06-02>>
+|===
+
+[[TC-WFL-012]]
+==== TC-WFL-012 - Screen 6 fill ends only on the level sensor
+
+[cols="1,4"]
+|===
+|Traces to |Change request
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware in fill phase; level sensor kept dry.
+|Test steps a|
+. Keep the level sensor dry for 60 s.
+|Expected result a|
+* The fill continues until the level sensor detects fluid; no fixed maximum time ends it.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-013]]
+==== TC-WFL-013 - Screen 7 priming and bubble detection stages
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-06
+|Method / Environment |Manual / BENCH
+|Preconditions |Node 0x04 in PRIMING.
+|Test steps a|
+. Observe the purge stage, then the bubble stage; inject a bubble during one cycle.
+|Expected result a|
+* Purge cycle and countdown follow 0x781; pump speed is shown.
+* Clean-cycle counter X/2; a bubbly cycle is reported in the status text; two bubbly cycles return to Screen 6.
+* After two clean cycles and BUBBLE_MANAGEMENT, the success panel and Continue are shown.
+|Evidence |<<FIG-S07-01,FIG-S07-01>>, <<FIG-S07-02,FIG-S07-02>>, <<FIG-S07-03,FIG-S07-03>>
+|===
+
+[[TC-WFL-014]]
+==== TC-WFL-014 - Screen 8 organ details entry
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 8 shown.
+|Test steps a|
+. Fill each of the six fields with the keyboard, in order: Organ ID, Weight, Harvest Hospital, Destination Institution, Blood Type, Cross Clamp Time.
+. Cancel an edit; leave Cross Clamp Time empty.
+|Expected result a|
+* Each field keeps only its own text.
+* Cancel restores the previous text; an empty clamp time shows the HH:MM hint again.
+* Continue is enabled only when the required fields are filled.
+|Evidence |<<FIG-S08-03,FIG-S08-03>>, <<FIG-S08-01,FIG-S08-01>>, <<FIG-S08-02,FIG-S08-02>>
+|===
+
+[[TC-WFL-015]]
+==== TC-WFL-015 - Screen 8 field length
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 8 shown.
+|Test steps a|
+. Type a 24-character name in Harvest Hospital and in Destination Institution.
+|Expected result a|
+* Both fields accept names of the same length (at least 24 characters).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-016]]
+==== TC-WFL-016 - Screen 8 weight accepts digits only
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 8 shown.
+|Test steps a|
+. Type abc, then 12a5, in the Weight field and continue to Screen 9.
+|Expected result a|
+* Only digits can be entered; organ_weight sent on 0x190 equals the typed number.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-017]]
+==== TC-WFL-017 - Screen 9 preservation mode routing
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 9 shown.
+|Test steps a|
+. Select Dynamic and Continue; repeat with Static.
+|Expected result a|
+* Selected button colours are swapped; mode sent: Static 1, Dynamic 2.
+* Dynamic and Static open Screen 12.
+|Evidence |<<FIG-S09-01,FIG-S09-01>>
+|===
+
+[[TC-WFL-019]]
+==== TC-WFL-019 - Screen 12 recommended configuration
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-03
+|Method / Environment |Manual / TGFX
+|Preconditions |Organ selected on Screen 3.
+|Test steps a|
+. Observe Screen 12; press Modify, go back; press Accept.
+|Expected result a|
+* Temperature shown with .0 and pressure as a whole number, matching the organ defaults.
+* Modify opens Screen 13; Accept opens Screen 14.
+|Evidence |<<FIG-S12-01,FIG-S12-01>>
+|===
+
+[[TC-WFL-020]]
+==== TC-WFL-020 - Screen 13 advanced override limits
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-10
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 13 shown.
+|Test steps a|
+. Step temperature and pressure to their limits.
+|Expected result a|
+* Limits equal the values Node 0x04 accepts: 0-15 degC and 0-50 mmHg.
+|Evidence |<<FIG-S13-01,FIG-S13-01>>
+|===
+
+[[TC-WFL-021]]
+==== TC-WFL-021 - Screen 13 confirm is acknowledged
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-10
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 13 with changed values.
+|Test steps a|
+. Press Confirm.
+|Expected result a|
+* The new setpoints are sent and their acceptance by Node 0x04 is confirmed before Screen 14 opens; a rejection is shown to the operator.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-022]]
+==== TC-WFL-022 - Screen 14 system ready and organ loading confirm
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-07
+|Method / Environment |Manual / BENCH
+|Preconditions |Node 0x04 in ORGAN_LOADING.
+|Test steps a|
+. Press Proceed.
+|Expected result a|
+* Final setpoints are written on entry.
+* Proceed sends the confirm and is disabled while waiting; Screen 15 opens when PRESERVATION is reached; on timeout Proceed is re-enabled.
+|Evidence |<<FIG-S14-01,FIG-S14-01>>
+|===
+
+[[TC-WFL-023]]
+==== TC-WFL-023 - Screen 15 dashboard values
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-04
+|Method / Environment |Manual / BENCH
+|Preconditions |PRESERVATION running.
+|Test steps a|
+. Vary temperature, pressure, pump RPM from the bench simulator; raise a sensor fault bit.
+|Expected result a|
+* Temperature, pressure, motor status (Running when RPM > 0), cycles, elapsed and loading time update every second.
+* A value shows `--` while its sensor fault bit is set or Node 0x04 is offline.
+|Evidence |<<FIG-S15-01,FIG-S15-01>>
+|===
+
+[[TC-WFL-024]]
+==== TC-WFL-024 - Screen 15 battery overlay
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-09
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 15 shown.
+|Test steps a|
+. Tap the battery button; tap Back.
+|Expected result a|
+* Overlay shows battery level, runtime and status; Back closes it.
+* Battery data comes from the power system.
+|Evidence |<<FIG-S15-02,FIG-S15-02>>
+|===
+
+[[TC-WFL-025]]
+==== TC-WFL-025 - Screen 15 manual flush
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-04 / SWRS-M2-CAN-04
+|Method / Environment |Manual / HIL
+|Preconditions |PRESERVATION running in dynamic mode.
+|Test steps a|
+. Request a manual flush from the dashboard.
+|Expected result a|
+* The flush request is sent to Node 0x04 and its progress is shown.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-026]]
+==== TC-WFL-026 - Screen 15 End Procedure
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-08
+|Method / Environment |Manual / BENCH
+|Preconditions |PRESERVATION running.
+|Test steps a|
+. Press End Procedure.
+|Expected result a|
+* The PRESERVATION confirm is sent; Screen 16 opens when ARRIVAL is reached.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-027]]
+==== TC-WFL-027 - Screen 16 arrival checklist order
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-08
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 16 shown.
+|Test steps a|
+. Tick step 3 first; tick 1, 2, 3; untick 2.
+|Expected result a|
+* Step 3 cannot be ticked before step 2; unticking step 2 clears step 3.
+* Proceed is enabled only when all steps are done.
+|Evidence |<<FIG-S16-01,FIG-S16-01>>
+|===
+
+[[TC-WFL-028]]
+==== TC-WFL-028 - Screen 16 arrival confirm
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-08
+|Method / Environment |Manual / BENCH
+|Preconditions |All steps ticked; Node 0x04 in ARRIVAL.
+|Test steps a|
+. Press Proceed.
+|Expected result a|
+* confirmed_state 7 is sent; Screen 17 opens when REPORT is reached.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-029]]
+==== TC-WFL-029 - Screen 17 transport summary
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-11
+|Method / Environment |Manual / BENCH
+|Preconditions |Session with alarms raised during PRESERVATION.
+|Test steps a|
+. Observe Screen 17 and scroll the summary.
+|Expected result a|
+* Organ details, temperature and pressure min/avg/max, alarm log lines (name - HH:MM:SS) with exact total, battery events and total preservation time are shown.
+* Shutdown opens Screen 18.
+|Evidence |<<FIG-S17-01,FIG-S17-01>>
+|===
+
+[[TC-WFL-030]]
+==== TC-WFL-030 - Screen 17 saving history step
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-11
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 17 opened.
+|Test steps a|
+. Observe the Saving History panel.
+|Expected result a|
+* The panel reflects a real save operation (or is removed).
+|Evidence |<<FIG-S17-02,FIG-S17-02>>
+|===
+
+[[TC-WFL-031]]
+==== TC-WFL-031 - Screen 18 power-off gating
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-11
+|Method / Environment |Manual / TGFX
+|Preconditions |Screen 18 shown, no USB stick.
+|Test steps a|
+. Try Power Off; press Skip USB; try Power Off again.
+|Expected result a|
+* Power Off is disabled while the USB panel is shown and while the copy popup is open; after Skip (or a finished/cancelled copy) the panel hides and Power Off works.
+|Evidence |<<FIG-S18-01,FIG-S18-01>>, <<FIG-S18-04,FIG-S18-04>>
+|===
+
+[[TC-WFL-032]]
+==== TC-WFL-032 - Full nominal session on the bench
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01..11
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench simulator; SD card inserted.
+|Test steps a|
+. Run the 14-step session walkthrough of test/m1_bench_sim/README.md from IDLE to REPORT.
+|Expected result a|
+* Every screen follows the workflow state; the session ends on Screen 18; the SD log has a complete session file with END line.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-WFL-033]]
+==== TC-WFL-033 - Full nominal session with Node 0x04 hardware
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01..11
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware, sensors connected.
+|Test steps a|
+. Run a complete session from IDLE to REPORT.
+|Expected result a|
+* Same as TC-WFL-032 with real sensor data.
+|Evidence |<<FIG-S05-02,FIG-S05-02>>, <<FIG-S07-03,FIG-S07-03>>, <<FIG-S15-01,FIG-S15-01>>, <<FIG-S17-01,FIG-S17-01>>, <<FIG-S18-03,FIG-S18-03>>
+|===
+
+[[TC-WFL-034]]
+==== TC-WFL-034 - Flow walk-through in the TouchGFX simulator
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-05
+|Method / Environment |Manual / TGFX
+|Preconditions |Simulator build.
+|Test steps a|
+. Walk all screens from Screen 1 to Screen 18 using the built-in Node 0x04 stand-in.
+|Expected result a|
+* Every screen is reachable; priming, bubble cycles and cooling run on the stand-in timers.
+|Evidence |Console output / log / trace
+|===
+
+=== SBR - Status Bar and Controller Supervision
+
+[[TC-SBR-001]]
+==== TC-SBR-001 - Status bar content on every screen
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-04
+|Method / Environment |Manual / TGFX
+|Preconditions |Any screen.
+|Test steps a|
+. Visit each screen.
+|Expected result a|
+* Screen title, time, battery level with colour, GPS icon and alert count are shown on all 18 screens.
+|Evidence |<<FIG-SB-01,FIG-SB-01>>
+|===
+
+[[TC-SBR-002]]
+==== TC-SBR-002 - GPS indicator
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-01
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session.
+|Test steps a|
+. Toggle gps_fix from the bench simulator.
+|Expected result a|
+* Active / inactive GPS icon follows gps_fix within 1 s.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-SBR-003]]
+==== TC-SBR-003 - Controller offline detection (heartbeat timeout)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-CAN-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session on any screen.
+|Test steps a|
+. Stop the Node 0x04 heartbeat (bench 'off'); restart it ('on').
+|Expected result a|
+* Within the 600 ms consumer timeout the controller-offline banner replaces the title; operator actions are not sent while offline.
+* The banner clears when the heartbeat returns, without reset.
+|Evidence |<<FIG-SB-02,FIG-SB-02>>
+|===
+
+[[TC-SBR-004]]
+==== TC-SBR-004 - Operator-facing wording
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Inspection / INSP
+|Preconditions |Source of status bar and popups.
+|Test steps a|
+. Review every operator-visible text.
+|Expected result a|
+* Texts name the main controller in operator terms, not by its internal development name.
+|Evidence |<<FIG-ALM-03,FIG-ALM-03>>
+|===
+
+=== ALM - Alarm Handling
+
+[[TC-ALM-001]]
+==== TC-ALM-001 - Alarm centre shows active alarms
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench session.
+|Test steps a|
+. Raise one warning and one critical alarm bit.
+. Open the alarm centre from the bell.
+|Expected result a|
+* Alert count = 2; newest card on top; critical card red, warning card orange; title and description text fully visible.
+|Evidence |<<FIG-ALM-01,FIG-ALM-01>>
+|===
+
+[[TC-ALM-002]]
+==== TC-ALM-002 - Alarm cards per alarm_flags bit
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench GUI alarm tick boxes.
+|Test steps a|
+. Raise each bit of the table in Annex A, one at a time; check the card; clear the bit.
+|Expected result a|
+* Card title and severity as listed in Annex A; card removed when the bit clears.
+|Evidence |<<FIG-ALM-01,FIG-ALM-01>>
+|===
+
+[[TC-ALM-003]]
+==== TC-ALM-003 - Alarm acknowledge
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Alarm bit 0 raised.
+|Test steps a|
+. Press Acknowledge on the card.
+|Expected result a|
+* ack_mask with that bit is written to Node 0x04; the card disappears when Node 0x04 clears the bit.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-004]]
+==== TC-ALM-004 - Alarms clear when the condition returns to normal
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware; perfusate temperature above the high limit.
+|Test steps a|
+. Let the temperature return to the normal range; wait 10 s; do not acknowledge.
+|Expected result a|
+* The Temp High alarm clears by itself (or is shown as no longer active).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-005]]
+==== TC-ALM-005 - Alarm Silence
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / TGFX
+|Preconditions |Alarm card shown.
+|Test steps a|
+. Press Silence.
+|Expected result a|
+* The audible alarm is silenced for that alarm.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-006]]
+==== TC-ALM-006 - More than eight simultaneous alarms
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench GUI.
+|Test steps a|
+. Raise ten alarm bits at once.
+|Expected result a|
+* All ten alarms are listed and counted.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-007]]
+==== TC-ALM-007 - Dashboard critical alarm popup
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 15 in Dynamic mode.
+|Test steps a|
+. Raise a critical bit (e.g. 11 Air Bubble Detected).
+|Expected result a|
+* The critical popup opens with title, description and the note 'Moved to Static Cold Storage' fully visible; it closes when no critical alarm is left.
+|Evidence |<<FIG-S15-03,FIG-S15-03>>
+|===
+
+[[TC-ALM-008]]
+==== TC-ALM-008 - Dashboard critical popup acknowledge
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Critical popup shown on Screen 15.
+|Test steps a|
+. Press Acknowledge on the popup; record 0x604.
+|Expected result a|
+* The acknowledgement is written to Node 0x04 (ack_mask) and the popup closes.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-009]]
+==== TC-ALM-009 - Motor diagnostic decision (bit 16)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bit 16 raised.
+|Test steps a|
+. Answer Motor Turns; repeat and answer Not Turning, then Cancel, then Confirm.
+|Expected result a|
+* Popup 'Motor Check Needed' with two answers; 'Not Turning' asks for confirmation.
+* diag_response 1 or 2 is written; popup closes when Node 0x04 clears bit 16.
+|Evidence |<<FIG-ALM-05,FIG-ALM-05>>
+|===
+
+[[TC-ALM-010]]
+==== TC-ALM-010 - Session resume decision (bit 18)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bit 18 raised.
+|Test steps a|
+. Answer Resume; repeat and answer Abandon, then Confirm.
+|Expected result a|
+* The popup is readable on every screen; pause_resolve_action 1 (resume) or 2 (abandon) is written; abandon returns to IDLE.
+|Evidence |<<FIG-ALM-03,FIG-ALM-03>>, <<FIG-ALM-05,FIG-ALM-05>>
+|===
+
+[[TC-ALM-011]]
+==== TC-ALM-011 - Pressure range decision (bit 19)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Bit 19 raised.
+|Test steps a|
+. Answer Resume with pressure in range and with pressure out of range.
+|Expected result a|
+* Resume is accepted only when the pressure is back in range; otherwise the popup stays and asks to try again.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-012]]
+==== TC-ALM-012 - Decision popup while Node 0x04 is offline or not answering
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / BENCH
+|Preconditions |Decision popup shown.
+|Test steps a|
+. Stop the Node 0x04 heartbeat, answer; restart; let the SDO write fail.
+|Expected result a|
+* Answers are blocked while offline with an explanation; a lost answer re-enables the buttons with a retry message.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-ALM-013]]
+==== TC-ALM-013 - Resume prompt after power loss during priming
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware; session in PRIMING.
+|Test steps a|
+. Switch off the whole system; switch on again.
+|Expected result a|
+* Node 0x04 restores the session and the Resume / Abandon popup is shown.
+|Evidence |<<FIG-ALM-03,FIG-ALM-03>>
+|===
+
+[[TC-ALM-014]]
+==== TC-ALM-014 - Safe Mode Active alarm and reason
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-HMI-05
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 boots in Safe Mode.
+|Test steps a|
+. Observe the alarm centre and the dashboard popup; acknowledge.
+|Expected result a|
+* 'Safe Mode Active' card shown as critical; the reason (0x2190 sub2) is shown to the operator.
+|Evidence |Console output / log / trace
+|===
+
+=== LOG - SD Card CAN Logging (on target)
+
+[[TC-LOG-001]]
+==== TC-LOG-001 - SD card detection, mount and file creation
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01 (deviation, OI-17)
+|Method / Environment |Manual / HIL
+|Preconditions |FAT32 microSD card.
+|Test steps a|
+. Power on with the card inserted; check the card on a PC after a session.
+|Expected result a|
+* SESSION_nnnn_IDLE_k.CSV and SESSION_nnnn_CANLOG.CSV files are created in the card root.
+|Evidence |<<FIG-LOG-01,FIG-LOG-01>>
+|===
+
+[[TC-LOG-002]]
+==== TC-LOG-002 - Log integrity check
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Automated / HIL
+|Preconditions |Card with session logs.
+|Test steps a|
+. Run python test/sd_canlog/check_canlog.py <drive>.
+|Expected result a|
+* All files pass: CRC chain, line numbers, END line present on finished sessions, 0 dropped.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-LOG-003]]
+==== TC-LOG-003 - Card removed and re-inserted during a session
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Manual / HIL
+|Preconditions |Session running.
+|Test steps a|
+. Pull the card out for 10 s, insert it again.
+|Expected result a|
+* Board keeps running; logging resumes in the next _PART file of the same session.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-LOG-004]]
+==== TC-LOG-004 - Power cut during a session
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Manual / HIL
+|Preconditions |Session running.
+|Test steps a|
+. Remove power; restore power.
+|Expected result a|
+* At most ~2 s of data is lost; the session continues in a _PART file; check_canlog passes.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-LOG-005]]
+==== TC-LOG-005 - No card / unreadable card
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-LOG-01
+|Method / Environment |Manual / HIL
+|Preconditions |No card or a non-FAT card.
+|Test steps a|
+. Power on and run a session.
+|Expected result a|
+* GUI and CAN work normally; only logging is off.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-LOG-006]]
+==== TC-LOG-006 - Queue load and dropped frames
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-04
+|Method / Environment |Manual / BENCH
+|Preconditions |Session running; CubeIDE Live Expressions.
+|Test steps a|
+. Run a 1 h session; watch CANLOG_queue_peak, CANLOG_dropped_count, CANLOG_max_sync_ms.
+|Expected result a|
+* dropped_count stays 0; queue peak well below 1024.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-LOG-007]]
+==== TC-LOG-007 - Operator inputs are logged
+
+[cols="1,4"]
+|===
+|Traces to |Change request
+|Method / Environment |Manual / HIL
+|Preconditions |Session with organ details and setpoint changes.
+|Test steps a|
+. Check the logs for organ ID, hospitals, blood type, clamp time and setpoint changes.
+|Expected result a|
+* All operator entries are recorded with time.
+|Evidence |Console output / log / trace
+|===
+
+=== USB - USB Log Transfer
+
+[[TC-USB-001]]
+==== TC-USB-001 - Copy only on Screen 18
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-USB-01 (deviation, OI-17)
+|Method / Environment |Manual / HIL
+|Preconditions |FAT32 USB stick.
+|Test steps a|
+. Insert the stick on Screen 15; then go to Screen 18.
+|Expected result a|
+* No copy before Screen 18; on Screen 18 the copy popup opens by itself and copies every `*.CSV` to ORGPORT_LOGS\.
+|Evidence |<<FIG-S18-02,FIG-S18-02>>, <<FIG-USB-01,FIG-USB-01>>
+|===
+
+[[TC-USB-002]]
+==== TC-USB-002 - Copy result and size check
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-USB-02
+|Method / Environment |Manual / HIL
+|Preconditions |Stick on Screen 18.
+|Test steps a|
+. Let the copy finish; compare files on the PC.
+|Expected result a|
+* Popup shows Done with file counts; every copied file has the same size as on the SD card; nothing is deleted from the SD card.
+|Evidence |<<FIG-S18-03,FIG-S18-03>>
+|===
+
+[[TC-USB-003]]
+==== TC-USB-003 - Files already on the stick are skipped
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-USB-02
+|Method / Environment |Manual / HIL
+|Preconditions |Stick that already holds the logs.
+|Test steps a|
+. Insert it again on Screen 18.
+|Expected result a|
+* Files with the same size are skipped; 'No new logs to copy' or skipped count shown.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-USB-004]]
+==== TC-USB-004 - Cancel during copy
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-USB-02
+|Method / Environment |Manual / HIL
+|Preconditions |Copy running.
+|Test steps a|
+. Press Cancel.
+|Expected result a|
+* Copy stops within ~60 ms; the half-copied file is deleted; Cancelled state shown; Power Off becomes available.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-USB-005]]
+==== TC-USB-005 - Stick pulled out during copy
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-USB-02
+|Method / Environment |Manual / HIL
+|Preconditions |Copy running.
+|Test steps a|
+. Pull the stick out.
+|Expected result a|
+* Aborted state shown; no crash; re-inserting copies the incomplete file again.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-USB-006]]
+==== TC-USB-006 - Stick without SD card
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-USB-01
+|Method / Environment |Manual / HIL
+|Preconditions |No SD card.
+|Test steps a|
+. Insert a stick on Screen 18.
+|Expected result a|
+* Popup reports that no SD card is available; nothing is written.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-USB-007]]
+==== TC-USB-007 - Logging continues during the copy
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-04
+|Method / Environment |Manual / HIL
+|Preconditions |Copy running.
+|Test steps a|
+. Run check_canlog on the IDLE file written during the copy.
+|Expected result a|
+* No dropped frames during the copy (copy limited to ~40 ms per 20 ms cycle).
+|Evidence |Console output / log / trace
+|===
+
+=== NFR - Non-Functional, Robustness and Performance
+
+[[TC-NFR-001]]
+==== TC-NFR-001 - Start-up time
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-03
+|Method / Environment |Manual / HIL
+|Preconditions |Board powered off.
+|Test steps a|
+. Power on and time until Screen 1 is visible.
+|Expected result a|
+* Screen 1 within 3 s.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-NFR-002]]
+==== TC-NFR-002 - HMI update latency
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-01
+|Method / Environment |Manual / BENCH
+|Preconditions |Screen 15.
+|Test steps a|
+. Change a value in the bench simulator and time the screen update (video).
+|Expected result a|
+* Update within 500 ms of the RPDO (plus the 1 s screen refresh where the screen refreshes once a second).
+|Evidence |Console output / log / trace
+|===
+
+[[TC-NFR-003]]
+==== TC-NFR-003 - Alarm activation latency
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-02
+|Method / Environment |Manual / BENCH
+|Preconditions |Any screen.
+|Test steps a|
+. Raise an alarm bit and time the alert count / card update.
+|Expected result a|
+* Alarm visible within 500 ms of the RPDO.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-NFR-004]]
+==== TC-NFR-004 - Long-duration session (8 h)
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-NFR-04
+|Method / Environment |Manual / BENCH
+|Preconditions |Bench simulator, SD card.
+|Test steps a|
+. Run PRESERVATION for 8 h.
+|Expected result a|
+* No freeze, reset or memory growth; log integrity passes; elapsed time correct.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-NFR-005]]
+==== TC-NFR-005 - Real-time clock
+
+[cols="1,4"]
+|===
+|Traces to |SWRS-M2-MW-03
+|Method / Environment |Manual / HIL
+|Preconditions |Board powered.
+|Test steps a|
+. Check status bar time and alarm times after a power cycle.
+|Expected result a|
+* Time of day is kept by the RTC and alarms carry a timestamp.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-NFR-006]]
+==== TC-NFR-006 - Node 0x04 recovers from a generic error
+
+[cols="1,4"]
+|===
+|Traces to |Integration
+|Method / Environment |Manual / HIL
+|Preconditions |Node 0x04 hardware.
+|Test steps a|
+. Provoke a FAULT event reported with the generic EMCY code; clear the cause.
+|Expected result a|
+* Node 0x04 returns to Operational without reboot.
+|Evidence |Console output / log / trace
+|===
+
+=== REG - Regression and Release Readiness
+
+[[TC-REG-001]]
+==== TC-REG-001 - Regression on the release candidate after refactoring
+
+[cols="1,4"]
+|===
+|Traces to |All
+|Method / Environment |Manual / BENCH
+|Preconditions |Release candidate build (guideline conversion, PIF layering, GUI renaming, receive filter fix).
+|Test steps a|
+. Re-run TC-WFL-032, TC-SBR-003, TC-ALM-001, TC-ALM-003, TC-LOG-002 and TC-USB-001..002 on the release candidate.
+|Expected result a|
+* All re-run cases pass with the same results as on the development build.
+|Evidence |Console output / log / trace
+|===
+
+[[TC-REG-002]]
+==== TC-REG-002 - Regression with Node 0x04 hardware
+
+[cols="1,4"]
+|===
+|Traces to |All
+|Method / Environment |Manual / HIL
+|Preconditions |Release candidate + Node 0x04 hardware.
+|Test steps a|
+. Re-run TC-WFL-033 and TC-LOG-001..002.
+|Expected result a|
+* Same results as on the development build.
+|Evidence |Console output / log / trace
+|===
+
+== Requirements Traceability Matrix
+
+Requirements are taken from CIOET-ORGPORT-SWRS-RVD-2026-001 where they still apply. 'Integration' marks behaviour defined by the Node 0x04 interface agreements, 'Change request' marks behaviour requested after the baseline.
+
+[cols="1,4",options="header"]
+|===
+|Requirement |Test cases
+|All |TC-REG-001, TC-REG-002
+|Change request |TC-WFL-012, TC-LOG-007
+|Integration |TC-CAN-017, TC-NFR-006
+|OI-17) |TC-LOG-001, TC-USB-001
+|SWRS-M2-CAN-01 |TC-CAN-002, TC-CAN-004, TC-CAN-016
+|SWRS-M2-CAN-01 (deviation |TC-CAN-003
+|SWRS-M2-CAN-02 |TC-BLD-007, TC-CAN-005, TC-CAN-006, TC-CAN-007, TC-CAN-015
+|SWRS-M2-CAN-03 |TC-CAN-008
+|SWRS-M2-CAN-04 |TC-CAN-009, TC-CAN-010, TC-CAN-011, TC-CAN-012, TC-CAN-013, TC-WFL-025
+|SWRS-M2-CAN-05 |TC-CAN-001, TC-WFL-003, TC-SBR-003
+|SWRS-M2-HMI-01 |TC-WFL-001, TC-WFL-002, TC-WFL-004, TC-WFL-005, TC-SBR-002
+|SWRS-M2-HMI-01..11 |TC-WFL-032, TC-WFL-033
+|SWRS-M2-HMI-02 |TC-WFL-006, TC-WFL-007
+|SWRS-M2-HMI-03 |TC-WFL-008, TC-WFL-010, TC-WFL-014, TC-WFL-015, TC-WFL-016, TC-WFL-017, TC-WFL-019
+|SWRS-M2-HMI-04 |TC-WFL-023, TC-WFL-025, TC-SBR-001
+|SWRS-M2-HMI-05 |TC-SBR-004, TC-ALM-001, TC-ALM-002, TC-ALM-003, TC-ALM-004, TC-ALM-005, TC-ALM-006, TC-ALM-007, TC-ALM-008, TC-ALM-009, TC-ALM-010, TC-ALM-011, TC-ALM-012, TC-ALM-013, TC-ALM-014
+|SWRS-M2-HMI-06 |TC-WFL-011, TC-WFL-013
+|SWRS-M2-HMI-07 |TC-WFL-022
+|SWRS-M2-HMI-08 |TC-WFL-026, TC-WFL-027, TC-WFL-028
+|SWRS-M2-HMI-09 |TC-WFL-024
+|SWRS-M2-HMI-10 |TC-CAN-014, TC-WFL-009, TC-WFL-020, TC-WFL-021
+|SWRS-M2-HMI-11 |TC-WFL-029, TC-WFL-030, TC-WFL-031
+|SWRS-M2-LOG-01 |TC-HST-001, TC-HST-002, TC-HST-003, TC-HST-004, TC-HST-005, TC-HST-006, TC-LOG-002, TC-LOG-003, TC-LOG-004, TC-LOG-005
+|SWRS-M2-LOG-01 (deviation |TC-LOG-001
+|SWRS-M2-MW-03 |TC-NFR-005
+|SWRS-M2-NFR-01 |TC-NFR-002
+|SWRS-M2-NFR-02 |TC-NFR-003
+|SWRS-M2-NFR-03 |TC-NFR-001
+|SWRS-M2-NFR-04 |TC-LOG-006, TC-USB-007, TC-NFR-004
+|SWRS-M2-NFR-05 |TC-BLD-002, TC-WFL-034
+|SWRS-M2-NFR-06 |TC-BLD-005
+|SWRS-M2-NFR-07 |TC-BLD-001, TC-BLD-003, TC-BLD-004, TC-BLD-006
+|SWRS-M2-USB-01 |TC-USB-006
+|SWRS-M2-USB-01 (deviation |TC-USB-001
+|SWRS-M2-USB-02 |TC-USB-002, TC-USB-003, TC-USB-004, TC-USB-005
+|see OI-17) |TC-CAN-003
+|===
+
+[[evidence-catalogue]]
+== Evidence Catalogue
+
+One figure per screen state. The test report holds the images (or placeholders).
+
+[cols="1,2,3,2",options="header"]
+|===
+|Figure |Caption |What to capture |Used by
+|[[FIG-S01-01]]FIG-S01-01 |Screen 1 - Start-up, idle |Screen 1 with versions and Continue visible |TC-WFL-001
+|[[FIG-S01-02]]FIG-S01-02 |Screen 1 - Validation popup |Popup with progress ring after Continue |TC-CAN-011, TC-WFL-002
+|[[FIG-S02-01]]FIG-S02-01 |Screen 2 - RFID authentication |Badge prompt and Enter PIN button |TC-WFL-006
+|[[FIG-S02-02]]FIG-S02-02 |Screen 2 - PIN pad |PIN pad with some masked digits |TC-WFL-006
+|[[FIG-S03-01]]FIG-S03-01 |Screen 3 - Organ selected |One organ card highlighted with its defaults |TC-WFL-008
+|[[FIG-S03-02]]FIG-S03-02 |Screen 3 - No organ selected |Organ cards before a selection |TC-WFL-008
+|[[FIG-S04-01]]FIG-S04-01 |Screen 4 - Temperature override |Value in the green band |TC-WFL-009
+|[[FIG-S05-01]]FIG-S05-01 |Screen 5 - Stabilising |Continue disabled, temperature outside +/-0.5 degC |TC-WFL-010
+|[[FIG-S05-02]]FIG-S05-02 |Screen 5 - Stable |Continue enabled |TC-WFL-010, TC-WFL-033
+|[[FIG-S06-01]]FIG-S06-01 |Screen 6 - Filling |Fill progress running |TC-WFL-011
+|[[FIG-S06-02]]FIG-S06-02 |Screen 6 - Fill complete |Fill complete status |TC-WFL-011
+|[[FIG-S07-01]]FIG-S07-01 |Screen 7 - Stage 1 priming |Purge cycle, countdown and pump speed |TC-CAN-006, TC-WFL-013
+|[[FIG-S07-02]]FIG-S07-02 |Screen 7 - Stage 2 bubble detection |Clean cycles X/2 and status |TC-WFL-013
+|[[FIG-S07-03]]FIG-S07-03 |Screen 7 - Priming successful |Success panel with Continue |TC-WFL-013, TC-WFL-033
+|[[FIG-S08-01]]FIG-S08-01 |Screen 8 - Organ details filled |All six fields filled |TC-WFL-014
+|[[FIG-S08-03]]FIG-S08-03 |Screen 8 - Empty form |Form with field hints before entry |TC-WFL-014
+|[[FIG-S08-02]]FIG-S08-02 |Screen 8 - Keyboard open |Keyboard editing one field |TC-WFL-014
+|[[FIG-S09-01]]FIG-S09-01 |Screen 9 - Mode selected |One preservation mode selected |TC-WFL-017
+|[[FIG-S12-01]]FIG-S12-01 |Screen 12 - Recommended configuration |Temperature and pressure shown |TC-WFL-019
+|[[FIG-S13-01]]FIG-S13-01 |Screen 13 - Advanced override |Adjusted values |TC-WFL-020
+|[[FIG-S14-01]]FIG-S14-01 |Screen 14 - System ready |Proceed button |TC-WFL-022
+|[[FIG-S15-01]]FIG-S15-01 |Screen 15 - Dashboard |All tiles with live values |TC-CAN-006, TC-WFL-023, TC-WFL-033
+|[[FIG-S15-02]]FIG-S15-02 |Screen 15 - Battery overlay |Battery details overlay |TC-WFL-024
+|[[FIG-S15-03]]FIG-S15-03 |Screen 15 - Critical alarm popup |Critical popup over the dashboard |TC-ALM-007
+|[[FIG-S16-01]]FIG-S16-01 |Screen 16 - Arrival checklist |All steps ticked |TC-WFL-027
+|[[FIG-S17-01]]FIG-S17-01 |Screen 17 - Transport summary |Summary with alarm log |TC-WFL-029, TC-WFL-033
+|[[FIG-S17-02]]FIG-S17-02 |Screen 17 - Saving history |Saving History panel |TC-WFL-030
+|[[FIG-S18-01]]FIG-S18-01 |Screen 18 - USB panel |Connect-pendrive panel with Skip |TC-WFL-031
+|[[FIG-S18-02]]FIG-S18-02 |Screen 18 - Copy in progress |Copy popup with progress bar |TC-USB-001
+|[[FIG-S18-03]]FIG-S18-03 |Screen 18 - Copy done |Copy popup in Done state |TC-WFL-033, TC-USB-002
+|[[FIG-S18-04]]FIG-S18-04 |Screen 18 - Safe to power off |Power Off after the USB step |TC-WFL-031
+|[[FIG-SB-01]]FIG-SB-01 |Status bar - normal |Title, time, battery, GPS and alert count |TC-WFL-001, TC-SBR-001
+|[[FIG-SB-02]]FIG-SB-02 |Status bar - controller offline |Offline banner in place of the title |TC-CAN-017, TC-SBR-003
+|[[FIG-ALM-01]]FIG-ALM-01 |Alarm centre |At least one warning and one critical card |TC-ALM-001, TC-ALM-002
+|[[FIG-ALM-03]]FIG-ALM-03 |Decision popup - session resume |Bit 18 popup |TC-SBR-004, TC-ALM-010, TC-ALM-013
+|[[FIG-ALM-05]]FIG-ALM-05 |Decision popup - confirmation |Are You Sure? step |TC-ALM-009, TC-ALM-010
+|[[FIG-LOG-01]]FIG-LOG-01 |SD card contents |File list of the card root after a session |TC-LOG-001
+|[[FIG-USB-01]]FIG-USB-01 |USB stick contents |ORGPORT_LOGS folder listing |TC-USB-001
+|[[FIG-CAN-01]]FIG-CAN-01 |Heartbeat 0x710 every 500 ms, state Operational |Serial monitor of the CAN bridge |TC-CAN-001
+|[[FIG-CAN-02]]FIG-CAN-02 |NMT Start test |nmt_test.py console |TC-CAN-004
+|[[FIG-CAN-03]]FIG-CAN-03 |RPDO1 received and stored |rpdo_test.py console |TC-CAN-005
+|[[FIG-CAN-04]]FIG-CAN-04 |SDO write confirmed and TPDO1 0x190 sent |tpdo_test.py / tpdo_watch.py console |TC-CAN-008, TC-CAN-009
+|[[FIG-CAN-05]]FIG-CAN-05 |TPDO1 0x190 between heartbeats |Raw SLCAN stream |TC-CAN-009
+|===
+
+[appendix]
+== Alarm Bits Covered by TC-ALM-002
+
+[cols="1,3,1,2",options="header"]
+|===
+|Bit |Card title |Severity |Operator action
+|0 |Perfusate Temp High |Warning |Acknowledge
+|1 |Chamber Temp High |Warning |Acknowledge
+|2 |Pressure 1 High |Warning |Acknowledge
+|3 |Pressure 2 High |Warning |Acknowledge
+|6 |Temp Sensor Fault |Warning |Acknowledge
+|7 |Humidity Sensor Fault |Warning |Acknowledge
+|8 |Accelerometer Fault |Warning |Acknowledge
+|9 |Pressure 1 Sensor Fault |Critical |Acknowledge
+|10 |Pressure 2 Sensor Fault |Critical |Acknowledge
+|11 |Air Bubble Detected |Critical |Acknowledge
+|12 |Door Open During Transport |Warning |Acknowledge
+|13 |Safe Mode Active |Critical |Permanent latch (reboot)
+|14 |Refrigeration Failure |Critical |Permanent latch (reboot)
+|15 |Actuator Comm Failure |Critical |Permanent latch (reboot)
+|16 |Motor Diagnostic Needed |Warning |Decision popup (diag response)
+|17 |Motor Confirmed Failure |Critical |Permanent latch (reboot)
+|18 |Session Resume Pending |Warning |Decision popup (resume / abandon)
+|19 |Pressure Range Pending |Warning |Decision popup (resume / abandon)
+|20 |Pressure Range Failure |Critical |Permanent latch (reboot)
+|21 |Perfusate Temp 2 Fault |Warning |Acknowledge
+|22 |Chamber Temp 2 Fault |Warning |Acknowledge
+|23 |Door Sensor Open |Warning |Acknowledge
+|24 |Emergency Stop |Critical |Acknowledge
+|===
+
+Bits 4 and 5 are not shown as cards (no display requirement).
+
+[appendix]
+== Test Tool Usage
+
+[source,bat]
+----
+REM Bench simulator (console), from CM7\test\m1_bench_sim
+python m1_bench_sim.py --port COM7
+python m1_bench_sim.py --port COM7 --no-nmt-start
+python m1_bench_trace.py --port COM7          (also writes logs\can_trace_*.csv)
+python m1_bench_gui.py                        (window version)
+
+REM CANopen conformance checks, from CM7\test\can_conformance
+python can_conformance_test.py --port COM7
+
+REM SD log integrity, from CM7\test\sd_canlog
+python check_canlog.py E:\
+
+REM Host unit test of the CAN logger (Git Bash), from CM7\test\host_canlog
+bash run_host_test.sh
+----
