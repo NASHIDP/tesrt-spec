@@ -116,9 +116,7 @@ The release candidate is *not ready for release*. Before release:
 
 * Alarm and fault states that do not occur on the available hardware (motor, refrigeration and
   actuator failures, pressure sensor faults, emergency stop) are produced with the bench simulator.
-* The SLCAN bridge occasionally stopped responding during long bench sessions. The bridge firmware
-  has a watchdog and the bench simulator reconnects automatically; affected runs were repeated.
-  This is a test-equipment limitation, not a DUT defect.
+
 
 == Results by Area
 
