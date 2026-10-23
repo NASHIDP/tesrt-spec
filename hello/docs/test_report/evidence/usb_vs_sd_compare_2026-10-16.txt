@@ -1,0 +1,3 @@
+USB stick ORGPORT_LOGS (copied 2026-10-16) vs SD card (read 2026-10-17)
+Method: file size + SHA-256 of every file on the stick, compared with the same file on the SD card
+Result: 13/13 files identical
