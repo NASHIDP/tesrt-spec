@@ -1,0 +1,247 @@
+= Release Notes - Display Node 0x10 Firmware v1.0.0
+:doctype: article
+:toc: left
+:toclevels: 2
+:sectnums:
+:icons: font
+:revnumber: 1.0
+:revdate: 2026-10-26
+:author: Nashid P
+:email: nashid@htic.iitm.ac.in
+:docref: RN-DISP-001
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+|Document ID |RN-DISP-001
+|Product |OrgPort - Riverdi HMI, Display Node 0x10 (STM32H757)
+|Release |Software v1.0.0 / Hardware HW-1.0
+|Release date |2026-10-26
+|Author |Nashid P
+|Reviewer |Benin R
+|===
+
+== Document History
+
+[cols="1,1,2,2,4",options="header"]
+|===
+|Version |Date |Author |Reviewer |Change Summary
+|1.0 |2026-10-26 |Nashid P |Benin R |Release notes for display firmware v1.0.0
+|===
+
+== Release Identification
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+|Software version |v1.0.0 (shown on Screen 1)
+|Hardware version |HW-1.0
+|CANopen identity (0x1018) |Vendor 0x0CBCC88A, product 0x00020001, revision 0x00010000
+|CANopen node ID |0x10, 500 kbit/s
+|Repository |orgport-app-stm32-riverdi
+|Branch |ORPT-171-DISPLAY_RELEASE_VERSION_1
+|Commit / tag |(to be filled at tagging)
+|Toolchain |STM32CubeIDE 1.19.0 (GCC 13.3.1 arm-none-eabi), TouchGFX 4.26.1
+|Object dictionary |OrgPort_STM32_HMI_Node10.xdd (OD.c / OD.h generated with CANopenEditor)
+|===
+
+== Overview
+
+Release v1.0.0 is the first release of the display firmware with the complete system
+integration. The previous version was a stand-alone GUI with no communication. This release adds:
+
+* CANopen communication with the main controller (Node 0x04), driving all 18 screens from the
+  controller's workflow state and sending operator inputs back;
+* alarm handling with an alarm centre, critical popups and operator decision popups;
+* CAN traffic logging to the microSD card, one CRC-protected file per session;
+* copying of the session logs to a USB pen drive at the end of a session;
+* firmware restructured to the CIOET coding guidelines and the platform-interface / middleware /
+  application layering.
+
+== New Features
+
+=== CANopen Integration with the Main Controller (Node 0x04)
+
+* CANopenNode v4 on FDCAN1, node 0x10, 500 kbit/s; heartbeat produced every 500 ms; Node 0x04
+  heartbeat supervised with a 600 ms timeout.
+* Goes Operational by itself when the Node 0x04 heartbeat reports Operational; no NMT Start
+  needed.
+* Receives seven PDOs from Node 0x04: workflow state and alarms, temperatures, humidity, bubble and
+  level sensors, GPS, debug events, boot health, pressures, pump speed and priming progress.
+* Sends operator inputs on TPDO1 0x190: confirm handshake (counter and current state),
+  authentication, organ type, preservation mode and organ weight.
+* Writes to Node 0x04 by SDO: alarm acknowledge, session resume / abandon, motor diagnosis answer
+  (0x2200) and temperature / pressure setpoints (0x2201).
+* FDCAN hardware filter rejects all frames that the display does not use.
+
+=== Workflow and Screens
+
+* Every screen follows the Node 0x04 workflow state (IDLE to REPORT); confirms are sent with the
+  agreed handshake and the next screen opens only when Node 0x04 has moved on.
+* After a display restart during a session, Screen 1 jumps to the screen of the running state.
+* Thermal stabilisation (Screen 5) unlocks Continue only within +/-0.5 degC of the target.
+* Reservoir fill and priming / bubble detection (Screens 6-7) show the live priming phase,
+  cycles, countdowns and pump speed from Node 0x04.
+* Dashboard (Screen 15) shows live temperature, pressure, motor status, elapsed and loading time;
+  values show `--` when the sensor is faulted or the controller is offline.
+* Transport summary (Screen 17) with organ details, temperature and pressure statistics and an
+  alarm log.
+
+=== Alarm Handling
+
+* Status bar on every screen with alert count, GPS indicator and a controller-offline banner.
+* Alarm centre with one card per active alarm bit; critical alarms in red, warnings in orange.
+* Critical alarm popup on the dashboard.
+* Decision popups for motor diagnosis (bit 16), session resume (bit 18) and pressure range
+  (bit 19), with a confirmation step for irreversible answers.
+
+=== SD Card CAN Logging
+
+* Logs every frame the display receives and sends, as CSV with line number, time, direction, ID,
+  data and a CRC-16 chained from line to line.
+* One file per session (SESSION_nnnn_CANLOG.CSV) with a ~4 s pre-roll and an END line; idle
+  periods in SESSION_nnnn_IDLE_k.CSV; a session interrupted by a power cut continues in
+  _PART2, _PART3 files.
+* Data saved at least every 2 s; card removal and missing card do not affect the rest of the
+  system.
+* PC tool `test/sd_canlog/check_canlog.py` verifies the files.
+
+=== USB Log Copy
+
+* On Screen 18, all session logs are copied to `ORGPORT_LOGS\` on a FAT32 pen drive.
+* Files already on the stick are skipped; every copied file is size-checked; nothing is deleted
+  from the SD card.
+* Progress popup with Cancel; pulling the stick out mid-copy is detected and reported; Power Off
+  stays disabled until the copy is finished, cancelled or skipped.
+
+=== Code Quality and Architecture
+
+* Converted to CIOET-ORGPORT-CGD-2026-001 (headers, naming, Allman style, named constants, no
+  dynamic memory).
+* SD card, USB and CAN logger moved to the platform-interface / middleware / application
+  structure; platform services wired in one place (app_wiring.c).
+* GUI widgets, handlers and interactions renamed to a consistent naming scheme.
+
+== Compatibility
+
+[cols="1,3",options="header"]
+|===
+|Item |Requirement
+|Main controller |Node 0x04 firmware with the agreed object dictionary: setpoint object 0x2201,
+TPDO7 0x781 with priming status, 0x2200 subs 7-12 (acknowledge, pause-resolve, diagnosis)
+|CAN bus |500 kbit/s, 120 ohm termination at both ends
+|microSD card |FAT32
+|USB pen drive |FAT32, connected through the USB host port (P10)
+|===
+
+== Verification Summary
+
+Verified according to test specification TS-DISP-002; results in test report TR-DISP-002.
+
+[cols="2,1,1,1,1,1",options="header"]
+|===
+|Area |Total |Pass |Fail |Blocked |Not run
+|Build, Static Analysis and Coding Guidelines |7 |7 |0 |0 |0
+|Host Unit Tests - SD Card CAN Logger |6 |6 |0 |0 |0
+|CANopen Protocol and Node 0x04 Interface |11 |7 |4 |0 |0
+|Workflow and Screen Behaviour |26 |15 |5 |6 |0
+|Status Bar and Controller Supervision |3 |2 |1 |0 |0
+|Alarm Handling |8 |0 |7 |1 |0
+|SD Card CAN Logging (on target) |4 |3 |0 |1 |0
+|USB Log Transfer |4 |4 |0 |0 |0
+|Non-Functional, Robustness and Performance |3 |0 |1 |1 |1
+|Regression and Release Readiness |0 |0 |0 |0 |0
+|*Total* |*72* |*44* |*18* |*9* |*1*
+|===
+
+Failed test cases are covered by the known issues below. Blocked cases depend on features that
+are not part of this release (see Open Items).
+
+== Known Issues
+
+The following display defects are open in this release and planned for a following release.
+
+[cols="1,5,1",options="header"]
+|===
+|Jira |Issue |Severity
+|https://otx-htic.atlassian.net/browse/ORPT-156[ORPT-156] |Organ Details: Harvest Hospital text appears in the Destination field |Major
+|https://otx-htic.atlassian.net/browse/ORPT-157[ORPT-157] |Organ Details: Destination Institution limited to 9 characters |Minor
+|https://otx-htic.atlassian.net/browse/ORPT-158[ORPT-158] |Organ Details: Weight field accepts non-numeric characters |Major
+|https://otx-htic.atlassian.net/browse/ORPT-159[ORPT-159] |Advanced configuration: setpoint acceptance is not verified |Major
+|https://otx-htic.atlassian.net/browse/ORPT-160[ORPT-160] |Advanced configuration: limits exceed the range accepted by Node 0x04 |Major
+|https://otx-htic.atlassian.net/browse/ORPT-161[ORPT-161] |Dashboard critical popup: Acknowledge does not acknowledge |Major
+|https://otx-htic.atlassian.net/browse/ORPT-162[ORPT-162] |Alarm centre: card description of latched alarms cut off |Minor
+|https://otx-htic.atlassian.net/browse/ORPT-163[ORPT-163] |Resume / Abandon prompt missing after power loss during priming |Critical
+|https://otx-htic.atlassian.net/browse/ORPT-164[ORPT-164] |CANopen communication reset (NMT 0x82) is not supported |Major
+|https://otx-htic.atlassian.net/browse/ORPT-165[ORPT-165] |Alarm card Silence button has no function |Minor
+|https://otx-htic.atlassian.net/browse/ORPT-166[ORPT-166] |Alarm centre shows at most 8 alarms |Major
+|https://otx-htic.atlassian.net/browse/ORPT-167[ORPT-167] |Session start refused without operator feedback |Major
+|https://otx-htic.atlassian.net/browse/ORPT-168[ORPT-168] |Operator texts use the internal development name of the controller |Minor
+|https://otx-htic.atlassian.net/browse/ORPT-169[ORPT-169] |Decision popup text overlaps the screen behind it |Major
+|===
+
+Issues found in the main controller (Node 0x04) firmware, to be fixed by the Node 0x04 team:
+
+[cols="1,5,1",options="header"]
+|===
+|ID |Issue |Severity
+|N04-01 |Temperature / pressure high alarms do not clear by themselves |Major
+|N04-02 |Node 0x04 stays Pre-Operational after CAN TX overflow at power-on |Critical
+|N04-03 |Node 0x04 never resets CANopen errors |Major
+|===
+
+=== Operating Notes for this Release
+
+* Power the display together with or before the main controller (see N04-02).
+* High temperature / pressure alarms stay active until acknowledged, even after the value returns
+  to normal (N04-01).
+* In Screen 13, keep setpoints within 0-15 degC and 0-50 mmHg (ORPT-160).
+* Enter digits only in the organ weight field (ORPT-158).
+* Use Acknowledge in the alarm centre, not on the dashboard critical popup, to acknowledge an
+  alarm (ORPT-161).
+
+== Open Items and Limitations
+
+Features and decisions not included in this release:
+
+[cols="1,2,4",options="header"]
+|===
+|ID |Item |Description
+|OI-01 |Fill phase limited by a maximum time |Node 0x04 ends the fill after a fixed maximum time; required: stop only when the level sensor detects fluid.
+|OI-02 |Manual flush from the dashboard |Feature required on Screen 15; needs a flush request object and behaviour in Node 0x04 first.
+|OI-03 |Logging of operator entries |Organ details (ID, hospitals, blood type, clamp time) and operator setpoint changes are not in the SD log (only CAN frames are logged).
+|OI-04 |Safe Mode reason not shown |0x2190 sub2 (safe_mode_reason) is received but not displayed; awaiting Node 0x04 team decision.
+|OI-05 |Clearing a permanent Safe Mode in service |Refrigeration, actuator, motor and pressure-range failures are stored and carried into every boot; no service clear path exists.
+|OI-06 |PIN verification not defined |Any 6-digit PIN is accepted; auth_status is always 1; attempt counter and lockout not implemented.
+|OI-07 |Screen 1 validation is a wait only |The 'Validating Sensors & Subsystems' popup waits for the Node 0x04 confirm; no readiness status is shown.
+|OI-08 |Alarm timestamps |Alarms carry no time of day (needs RTC).
+|OI-09 |RTC not integrated |Time of day is not kept across power cycles.
+|OI-10 |Screen 17 'Saving History' placeholder |Animation only; no save operation behind it.
+|OI-11 |Battery data simulated |Battery level and runtime are simulated; no battery data in the interface.
+|OI-12 |Hypothermic (HOPE) option still selectable |HOPE is not used in this release, but Screen 9 still offers Hypothermic Oxygenated Perfusion, which leads to the unused oxygenator Screens 10 and 11.
+|OI-13 |Dashboard 'Next Flushing' is display-only |Countdown is computed locally, not from Node 0x04.
+|OI-14 |No low temperature / low pressure alarms |Node 0x04 defines no TEMP LOW or PRESSURE LOW bit.
+|OI-15 |Emergency stop bit 24 not defined |The display table includes bit 24; the Node 0x04 code does not define it.
+|OI-16 |Test bypass macros in Node 0x04 debug build |WORKFLOW_TEST_BYPASS_SENSOR_GATE and the stepper bypass are still in the Node 0x04 build configuration.
+|OI-17 |Requirement baseline outdated |CIOET-ORGPORT-SWRS-RVD-2026-001 still describes node 0x06, W25Q128 flash logging, TinyUSB export on SDO trigger, NMT start by Node 0x04 and a five-screen HMI. The implementation uses node 0x10, SD card logging, USB copy on Screen 18, autonomous Operational and 18 screens. The SWRS must be updated.
+|OI-19 |No audible alarm |No buzzer is driven on alarm activation (SWRS-M2-HMI-05 item 4).
+|===
+
+== Installation
+
+. Build the CM7 project in STM32CubeIDE 1.19.0 (configuration Debug), or use the released binary.
+. Connect the ST-LINK and flash the CM7 application with STM32CubeIDE (Run / Debug) or
+  STM32CubeProgrammer.
+. Insert a FAT32 microSD card and connect the CAN bus to the main controller.
+. Power on: Screen 1 shows "Software Version: v1.0.0" and "Hardware Version: HW-1.0".
+
+== Related Documents
+
+[cols="1,3",options="header"]
+|===
+|Document |Title
+|TS-DISP-002 |Test Specification - Display Node 0x10 (Riverdi HMI) Firmware
+|TR-DISP-002 |Test Report - Display Node 0x10 (Riverdi HMI) Firmware
+|CIOET-ORGPORT-SWRS-RVD-2026-001 |OrgPort SWRS - Riverdi HMI node (baseline, update pending: OI-17)
+|CIOET-ORGPORT-CGD-2026-001 |CIOET OrgPort C Coding Guidelines
+|===
