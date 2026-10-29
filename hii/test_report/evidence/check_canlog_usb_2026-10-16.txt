@@ -1,0 +1,16 @@
+SESSION_0000_IDLE_1.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0000_IDLE_2.CSV        OK         81 lines, 5 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0001_CANLOG.CSV        OK         6234 lines, 6 min 54 s, complete (END found), 0 dropped, states IDLE > AUTH > CONFIG > PRIMING > BUBBLE > LOADING > PRESERVATION > ARRIVAL > REPORT > IDLE
+SESSION_0001_IDLE_1.CSV        OK         577 lines, 38 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0001_IDLE_2.CSV        OK         120 lines, 16 s, 0 dropped, no M1 state seen
+SESSION_0001_IDLE_3.CSV        OK         11 lines, 0 s, 0 dropped, no M1 state seen
+SESSION_0002_CANLOG.CSV        OK         132 lines, 8 s, complete (END found), 0 dropped, states REPORT > IDLE
+SESSION_0002_IDLE_1.CSV        OK         386 lines, 25 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0003_CANLOG.CSV        CUT SHORT  1099 lines, 1 min 12 s, 0 dropped, states IDLE > AUTH > CONFIG
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0003_CANLOG_PART2.CSV  OK         102 lines, 6 s, complete (END found), 0 dropped, states CONFIG > IDLE
+SESSION_0003_IDLE_1.CSV        OK         11 lines, 0 s, 0 dropped, no M1 state seen
+SESSION_0003_IDLE_2.CSV        OK         596 lines, 39 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0004_CANLOG.CSV        OK         3532 lines, 3 min 53 s, complete (END found), 0 dropped, states IDLE > AUTH > CONFIG > PRIMING > BUBBLE > LOADING > PRESERVATION > ARRIVAL > REPORT > IDLE
+
+Some files need a look - see above.

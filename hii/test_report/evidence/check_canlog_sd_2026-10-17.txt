@@ -1,0 +1,68 @@
+SESSION_0000_IDLE_1.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0000_IDLE_2.CSV        OK         81 lines, 5 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0001_CANLOG.CSV        OK         6234 lines, 6 min 54 s, complete (END found), 0 dropped, states IDLE > AUTH > CONFIG > PRIMING > BUBBLE > LOADING > PRESERVATION > ARRIVAL > REPORT > IDLE
+SESSION_0001_IDLE_1.CSV        OK         577 lines, 38 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0001_IDLE_2.CSV        OK         120 lines, 16 s, 0 dropped, no M1 state seen
+SESSION_0001_IDLE_3.CSV        OK         11 lines, 0 s, 0 dropped, no M1 state seen
+SESSION_0002_CANLOG.CSV        OK         132 lines, 8 s, complete (END found), 0 dropped, states REPORT > IDLE
+SESSION_0002_IDLE_1.CSV        OK         386 lines, 25 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0003_CANLOG.CSV        CUT SHORT  1099 lines, 1 min 12 s, 0 dropped, states IDLE > AUTH > CONFIG
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0003_CANLOG_PART2.CSV  OK         102 lines, 6 s, complete (END found), 0 dropped, states CONFIG > IDLE
+SESSION_0003_IDLE_1.CSV        OK         11 lines, 0 s, 0 dropped, no M1 state seen
+SESSION_0003_IDLE_2.CSV        OK         596 lines, 39 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0004_CANLOG.CSV        OK         3532 lines, 3 min 53 s, complete (END found), 0 dropped, states IDLE > AUTH > CONFIG > PRIMING > BUBBLE > LOADING > PRESERVATION > ARRIVAL > REPORT > IDLE
+SESSION_0004_IDLE_1.CSV        OK         762 lines, 50 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0004_IDLE_2.CSV        OK         82 lines, 5 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0005_CANLOG.CSV        CUT SHORT  343 lines, 23 s, 0 dropped, states IDLE > AUTH > CONFIG
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0005_IDLE_1.CSV        OK         96 lines, 6 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0006_CANLOG.CSV        CUT SHORT  2837 lines, 3 min 09 s, 0 dropped, states IDLE > AUTH > CONFIG > AUTH
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0006_IDLE_1.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_2.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_3.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_4.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_5.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_6.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_7.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_8.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0006_IDLE_9.CSV        OK         42 lines, 1 min 04 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0006_IDLE_10.CSV       OK         176 lines, 54 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0007_CANLOG.CSV        OK         1823 lines, 2 min 27 s, complete (END found), 0 dropped, states IDLE > AUTH > CONFIG > PRIMING > BUBBLE > LOADING > PRESERVATION > ARRIVAL > REPORT > IDLE
+SESSION_0007_IDLE_1.CSV        OK         1169 lines, 1 min 42 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0007_IDLE_2.CSV        OK         8 lines, 5 s, 0 dropped, no M1 state seen
+SESSION_0007_IDLE_3.CSV        OK         122 lines, 17 s, 0 dropped, no M1 state seen
+SESSION_0008_CANLOG.CSV        OK         131 lines, 13 s, complete (END found), 0 dropped, states AUTH > IDLE
+SESSION_0008_IDLE_1.CSV        OK         30 lines, 1 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0009_CANLOG.CSV        CUT SHORT  499 lines, 32 s, 0 dropped, states IDLE > AUTH > CONFIG
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0009_CANLOG_PART2.CSV  OK         131 lines, 13 s, complete (END found), 0 dropped, states AUTH > IDLE
+SESSION_0009_IDLE_1.CSV        OK         126 lines, 16 s, 0 dropped, no M1 state seen
+SESSION_0009_IDLE_2.CSV        OK         181 lines, 25 s, 0 dropped, no M1 state seen
+SESSION_0009_IDLE_3.CSV        OK         45 lines, 2 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0010_CANLOG.CSV        CUT SHORT  389 lines, 25 s, 0 dropped, states IDLE > AUTH > CONFIG
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0010_CANLOG_PART2.CSV  OK         161 lines, 15 s, complete (END found), 0 dropped, states CONFIG > IDLE
+SESSION_0010_IDLE_1.CSV        OK         587 lines, 1 min 23 s, 0 dropped, no M1 state seen
+SESSION_0010_IDLE_2.CSV        OK         75 lines, 4 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0011_CANLOG.CSV        CUT SHORT  159 lines, 10 s, 0 dropped, states IDLE > AUTH
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0011_CANLOG_PART2.CSV  OK         135 lines, 12 s, complete (END found), 0 dropped, states AUTH > IDLE
+SESSION_0011_IDLE_1.CSV        OK         223 lines, 30 s, 0 dropped, no M1 state seen
+SESSION_0011_IDLE_2.CSV        OK         52 lines, 7 s, 0 dropped, no M1 state seen
+SESSION_0011_IDLE_3.CSV        OK         65 lines, 4 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0011_IDLE_4.CSV        OK         126 lines, 16 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0011_IDLE_5.CSV        OK         179 lines, 18 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0012_CANLOG.CSV        CUT SHORT  645 lines, 42 s, 0 dropped, states IDLE > AUTH
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0012_CANLOG_PART2.CSV  CUT SHORT  65 lines, 4 s, 0 dropped, states AUTH
+                                 CUT SHORT: no END line (power cut or card pulled out?)
+SESSION_0012_CANLOG_PART3.CSV  OK         131 lines, 13 s, complete (END found), 0 dropped, states AUTH > IDLE
+SESSION_0012_IDLE_1.CSV        OK         27 lines, 2 s, 0 dropped, no M1 state seen
+SESSION_0012_IDLE_2.CSV        OK         182 lines, 25 s, 0 dropped, no M1 state seen
+SESSION_0012_IDLE_3.CSV        OK         215 lines, 14 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0012_IDLE_4.CSV        OK         154 lines, 20 s, 0 dropped, M1 IDLE only (no session)
+SESSION_0012_IDLE_5.CSV        OK         814 lines, 1 min 12 s, 0 dropped, M1 IDLE only (no session)
+
+Some files need a look - see above.

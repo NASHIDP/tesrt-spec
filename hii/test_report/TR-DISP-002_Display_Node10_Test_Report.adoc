@@ -1,0 +1,3576 @@
+= Test Report - Display Node 0x10 (Riverdi HMI) Firmware
+:doctype: article
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectnumlevels: 4
+:icons: font
+:source-highlighter: rouge
+:imagesdir: .
+:revnumber: 0.2
+:revdate: 2026-10-28
+:author: Nashid P
+:email: nashid@htic.iitm.ac.in
+:docref: TR-DISP-002
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+|Document ID |TR-DISP-002
+|Project |OrgPort - Riverdi HMI, Display Node 0x10 (STM32H757)
+|Revision |0.2 (2026-10-28)
+|Author |Nashid P
+|Status |Draft for review
+|===
+
+== Test Report Version History
+
+[cols="1,1,2,2,4",options="header"]
+|===
+|Version |Date |Author |Reviewer |Change Summary
+|0.1 |2026-10-23 |Nashid P |Benin R |Initial issue for the CAN-integrated display firmware; test set focused on critical functions, screens documented by the evidence catalogue
+|0.2 |2026-10-28 |Nashid P |Benin R |Results of the automated unit tests of the middleware and application modules added, with the per-test unit test results in this report (137 run, 136 passed, 1 failed = ORPT-164)
+|===
+
+== Introduction
+
+This report records the results of the tests specified in TS-DISP-002 for the display node
+(Node 0x10) firmware, including all defects and open items found while testing together with the
+main controller (Node 0x04).
+
+== Build Under Test
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+|Firmware |DISPLAY_RIVERDI, CM7 application, Debug configuration (release candidate 2026-10-23)
+|Repository |orgport-app-stm32-riverdi
+|Branch |ORPT-171-DISPLAY_RELEASE_VERSION_1
+|Toolchain |STM32CubeIDE 1.19.0, GCC 13.3.1; TouchGFX 4.26.1
+|Object dictionary |OrgPort_STM32_HMI_Node10.xdd (OD.c / OD.h regenerated with CANopenEditor)
+|Node 0x04 firmware (HIL) |(to be filled: branch and commit of the Node 0x04 build used)
+|Changes since the development build |Coding guideline conversion, PIF / middleware / application
+layering of SD card, USB and CAN logger, FDCAN global filter enabled, GUI naming update
+|===
+
+[NOTE]
+====
+Results marked "development build" were obtained during development (2026-09-23 to 2026-10-14)
+on earlier builds with the same functional behaviour. The complete hardware session of 2026-10-23
+(TC-WFL-033) was run on the release candidate.
+====
+
+== Executive Summary
+
+[cols="2,1,1,1,1,1",options="header"]
+|===
+|Area |Total |Pass |Fail |Blocked |Not run
+|BLD - Build, Static Analysis and Coding Guidelines |7 |7 |0 |0 |0
+|HST - Host Unit Tests - SD Card CAN Logger |6 |6 |0 |0 |0
+|CAN - CANopen Protocol and Node 0x04 Interface |11 |7 |4 |0 |0
+|WFL - Workflow and Screen Behaviour |26 |15 |5 |6 |0
+|SBR - Status Bar and Controller Supervision |3 |2 |1 |0 |0
+|ALM - Alarm Handling |8 |0 |7 |1 |0
+|LOG - SD Card CAN Logging (on target) |4 |3 |0 |1 |0
+|USB - USB Log Transfer |4 |4 |0 |0 |0
+|NFR - Non-Functional, Robustness and Performance |3 |0 |1 |1 |1
+|REG - Regression and Release Readiness |0 |0 |0 |0 |0
+|*Total* |*72* |*44* |*18* |*9* |*1*
+|===
+
+The automated unit tests of the middleware and application modules (137 test cases: 136 passed,
+1 failed) are summarised in <<unit-tests,Unit Tests of the Middleware and Application Modules>> and
+detailed in <<unit-test-details,Unit Test Details>>. They are not counted in the table above.
+
+=== Key Findings
+
+* 17 defects were found: 2 Critical, 11 Major,
+  4 Minor. 14 concern the display (one jointly with Node 0x04) and are raised in
+  Jira as ORPT-156 to ORPT-169; 3 concern Node 0x04 (N04-01 to N04-03) and are handed to the
+  Node 0x04 team for raising in their tracker.
+* The CANopen interface (heartbeat, NMT, RPDO, TPDO, SDO server) and the nominal workflow on the
+  bench passed on the development build.
+* The CAN logger passed all host test scenarios on the release candidate source.
+* The automated unit tests of all display middleware and application modules (137 test cases) passed
+  except UT-COAPP-RESET-001, which reproduces ORPT-164 on the PC and confirms its cause.
+* Open defects on the operator interface affect data entry (organ details, weight), setpoint
+  confirmation and alarm acknowledgement.
+* Node 0x04 issues block a reliable start-up when Node 0x04 is powered before the display
+  (N04-02) and keep high temperature / pressure alarms active (N04-01).
+* 18 open items list missing features and requirement updates (manual flush, PIN, RTC,
+  Safe Mode reason, battery data, SWRS baseline).
+
+== Test Environment as Executed
+
+[cols="1,3",options="header"]
+|===
+|Environment |Set-up used
+|BUILD |Build PC (STM32CubeIDE headless build, TouchGFX simulator build)
+|HOST |Host PC unit test (MinGW GCC, real module source with stubs)
+|TGFX |TouchGFX PC simulator (built-in Node 0x04 stand-in)
+|BENCH |Target board + Node 0x04 bench simulator over the SLCAN bridge
+|HIL |Target board + Node 0x04 main controller (S32K312) hardware
+|INSP |Inspection / review of source and configuration
+|===
+
+=== Limitations
+
+* Alarm and fault states that do not occur on the available hardware (motor, refrigeration and
+  actuator failures, pressure sensor faults, emergency stop) are produced with the bench simulator.
+
+== Results by Area
+
+=== BLD - Build, Static Analysis and Coding Guidelines
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-001,TC-BLD-001>> |Target firmware builds without errors |BUILD |PASS |Headless CubeIDE + simulator build, 2026-10-23 (0 errors; 1 linker RWX warning, accepted) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-002,TC-BLD-002>> |TouchGFX simulator builds without errors |BUILD |PASS |Headless CubeIDE + simulator build, 2026-10-23 (0 errors; 1 linker RWX warning, accepted) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-003,TC-BLD-003>> |Coding guideline conformance of display-owned code |INSP |PASS |Guideline conversion review and scripted checks, 2026-10-21/23 |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-004,TC-BLD-004>> |Layered architecture (PIF / middleware / application) |INSP |PASS |Scripted search, 2026-10-22 |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-005,TC-BLD-005>> |No dynamic memory allocation |INSP |PASS |Scripted search, 2026-10-23 |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-006,TC-BLD-006>> |GUI widget and handler names match the generated code |BUILD |PASS |Name verification script + builds, 2026-10-23 |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-BLD-007,TC-BLD-007>> |Object dictionary matches the Node 0x04 interface contract |INSP |PASS |Scripted OD comparison against the Node 0x04 OD, 2026-10-13 |-
+|===
+
+=== HST - Host Unit Tests - SD Card CAN Logger
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-HST-001,TC-HST-001>> |Logging with no Node 0x04 on the bus |HOST |PASS |test/host_canlog/run_host_test.sh on the release candidate source: PASS, 16 files identical to expected/; check_canlog.py CRC chain OK (2026-10-23) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-HST-002,TC-HST-002>> |Idle logging while Node 0x04 stays in IDLE |HOST |PASS |test/host_canlog/run_host_test.sh on the release candidate source: PASS, 16 files identical to expected/; check_canlog.py CRC chain OK (2026-10-23) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-HST-003,TC-HST-003>> |Complete session file with END line |HOST |PASS |test/host_canlog/run_host_test.sh on the release candidate source: PASS, 16 files identical to expected/; check_canlog.py CRC chain OK (2026-10-23) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-HST-004,TC-HST-004>> |Queue overflow and power cut during a session |HOST |PASS |test/host_canlog/run_host_test.sh on the release candidate source: PASS, 16 files identical to expected/; check_canlog.py CRC chain OK (2026-10-23) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-HST-005,TC-HST-005>> |Resume after a power cut continues as _PART2 |HOST |PASS |test/host_canlog/run_host_test.sh on the release candidate source: PASS, 16 files identical to expected/; check_canlog.py CRC chain OK (2026-10-23) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-HST-006,TC-HST-006>> |New session after the controller restarted in IDLE |HOST |PASS |test/host_canlog/run_host_test.sh on the release candidate source: PASS, 16 files identical to expected/; check_canlog.py CRC chain OK (2026-10-23) |-
+|===
+
+[[unit-tests]]
+==== Unit Tests of the Middleware and Application Modules
+
+Specified in UT-SPEC-DISP-002; the per-test results are in <<unit-test-details,Unit Test Details>>. Run on 2026-10-28 with
+`test/host_unit/run_host_unit.sh` (host PC, MinGW GCC 13.2.0); every module is compiled unchanged, and the
+CANopen tests use the real CANopenNode v4 library and OD.c. Evidence:
+`evidence/UT-DISP-002-TestEvidence_V1.0.txt`.
+
+[cols="3,1,1,1,2",options="header"]
+|===
+|Module |Run |Pass |Fail |Defect
+|mw_can - FDCAN1 middleware |29 |29 |0 |-
+|mw_osif - OS abstraction |11 |11 |0 |-
+|mw_sd, mw_usb - SD card and USB host middleware |10 |10 |0 |-
+|can_log - SD card CAN logger |26 |26 |0 |-
+|sd_card - SD task |13 |13 |0 |-
+|usb_drive - USB log copy |27 |27 |0 |-
+|canopen_app, CO_driver - CANopen start-up and target driver |21 |20 |1 |<<ORPT-164,ORPT-164>> (UT-COAPP-RESET-001)
+|*Total* |*137* |*136* |*1* |
+|===
+
+A check with three deliberately injected faults (in temporary copies of the code) confirmed that the
+tests detect them; see <<unit-test-details,Unit Test Details>>, Test Effectiveness Check.
+
+=== CAN - CANopen Protocol and Node 0x04 Interface
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-001,TC-CAN-001>> |Heartbeat production 0x710 every 500 ms |BENCH |PASS |FIG-CAN-01 (development build, 2026-09-24) (see <<FIG-CAN-01,FIG-CAN-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-003,TC-CAN-003>> |Autonomous transition to Operational when Node 0x04 is Operational |BENCH |PASS |Demonstrated by TC-WFL-033: Node 0x04 sends no NMT command, and the display ran the complete hardware session (2026-10-23) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-004,TC-CAN-004>> |NMT Start command accepted |BENCH |PASS |FIG-CAN-02 (development build, 2026-09-23) (see <<FIG-CAN-02,FIG-CAN-02>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-005,TC-CAN-005>> |RPDO1 0x181 reception and storage |BENCH |PASS |FIG-CAN-03 (development build, 2026-09-24) (see <<FIG-CAN-03,FIG-CAN-03>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-008,TC-CAN-008>> |SDO server on 0x610/0x590 |BENCH |PASS |FIG-CAN-04 (development build, 2026-09-24) (see <<FIG-CAN-04,FIG-CAN-04>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-009,TC-CAN-009>> |TPDO1 0x190 operator input frame |BENCH |PASS |FIG-CAN-04, FIG-CAN-05 (development build, 2026-09-24) (see <<FIG-CAN-04,FIG-CAN-04>>, <<FIG-CAN-05,FIG-CAN-05>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-010,TC-CAN-010>> |Confirm handshake (counter + current state) |BENCH |PASS |Bench session traces m1_bench_sim/logs (development build, 2026-10-13/14) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-011,TC-CAN-011>> |Confirm timeout when Node 0x04 does not accept |BENCH |*FAIL* |Code review 2026-10-23: popup closes silently (see <<FIG-S01-02,FIG-S01-02>>) |ORPT-167
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-014,TC-CAN-014>> |Rejected setpoint is detected by the display |BENCH |*FAIL* |Code review 2026-10-23: no read-back, Screen 14 opens directly |ORPT-159
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-016,TC-CAN-016>> |CANopen communication reset (NMT 0x82) |BENCH |*FAIL* |Code review 2026-10-23: receive filters cannot be re-registered |ORPT-164
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-CAN-017,TC-CAN-017>> |Node 0x04 start-up when it is alone on the bus |HIL |*FAIL* |Hardware session logs (SD card), 2026-10: Node 0x04 latches CAN TX overflow EMCY and stays Pre-Operational (see <<FIG-SB-02,FIG-SB-02>>) |N04-02
+|===
+
+=== WFL - Workflow and Screen Behaviour
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-001,TC-WFL-001>> |Screen 1 idle content |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S01-01,FIG-S01-01>>, <<FIG-SB-01,FIG-SB-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-002,TC-WFL-002>> |Screen 1 Continue starts a session |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S01-02,FIG-S01-02>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-005,TC-WFL-005>> |Screen 1 sensor and subsystem validation |HIL |BLOCKED |Not implemented: the popup only waits for the Node 0x04 confirm (OI-07) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-007,TC-WFL-007>> |Screen 2 authentication against Node 0x04 |BENCH |BLOCKED |PIN verification not defined (OI-06); any 6-digit PIN is accepted |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-008,TC-WFL-008>> |Screen 3 organ selection and defaults |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: no selection shows 0 / 0, Heart shows 8 degC / 20 mmHg (see <<FIG-S03-02,FIG-S03-02>>, <<FIG-S03-01,FIG-S03-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-010,TC-WFL-010>> |Screen 5 thermal stabilisation gate |BENCH |PASS |Bench sweep (development build, 2026-10); Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: 3.5 degC no Continue, 11.5 degC Continue (see <<FIG-S05-01,FIG-S05-01>>, <<FIG-S05-02,FIG-S05-02>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-011,TC-WFL-011>> |Screen 6 reservoir fill follows Node 0x04 |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S06-01,FIG-S06-01>>, <<FIG-S06-02,FIG-S06-02>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-012,TC-WFL-012>> |Screen 6 fill ends only on the level sensor |HIL |BLOCKED |Requires Node 0x04 change (OI-01) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-013,TC-WFL-013>> |Screen 7 priming and bubble detection stages |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S07-01,FIG-S07-01>>, <<FIG-S07-02,FIG-S07-02>>, <<FIG-S07-03,FIG-S07-03>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-014,TC-WFL-014>> |Screen 8 organ details entry |TGFX |*FAIL* |Reported by tester on target: Harvest Hospital text appears in the Destination field (see <<FIG-S08-03,FIG-S08-03>>, <<FIG-S08-01,FIG-S08-01>>, <<FIG-S08-02,FIG-S08-02>>) |ORPT-156
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-015,TC-WFL-015>> |Screen 8 field length |TGFX |*FAIL* |Code review: Destination buffer holds 9 characters |ORPT-157
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-016,TC-WFL-016>> |Screen 8 weight accepts digits only |TGFX |*FAIL* |Code review: letters accepted; abc sent as 0 g, 12a5 as 12 g |ORPT-158
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-017,TC-WFL-017>> |Screen 9 preservation mode routing |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S09-01,FIG-S09-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-019,TC-WFL-019>> |Screen 12 recommended configuration |TGFX |PASS |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: 12.0 degC / 20 mmHg shown with Accept and Modify (see <<FIG-S12-01,FIG-S12-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-020,TC-WFL-020>> |Screen 13 advanced override limits |TGFX |*FAIL* |Code review: limits are 0-20 degC and 0-100 mmHg (see <<FIG-S13-01,FIG-S13-01>>) |ORPT-160
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-021,TC-WFL-021>> |Screen 13 confirm is acknowledged |BENCH |*FAIL* |Code review: Screen 14 opens immediately after sending |ORPT-159
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-022,TC-WFL-022>> |Screen 14 system ready and organ loading confirm |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S14-01,FIG-S14-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-023,TC-WFL-023>> |Screen 15 dashboard values |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S15-01,FIG-S15-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-024,TC-WFL-024>> |Screen 15 battery overlay |TGFX |BLOCKED |Battery values are simulated; no battery data source (OI-11) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-025,TC-WFL-025>> |Screen 15 manual flush |HIL |BLOCKED |Feature not implemented; needs Node 0x04 support (OI-02) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-026,TC-WFL-026>> |Screen 15 End Procedure |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-028,TC-WFL-028>> |Screen 16 arrival confirm |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-029,TC-WFL-029>> |Screen 17 transport summary |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23 (see <<FIG-S17-01,FIG-S17-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-030,TC-WFL-030>> |Screen 17 saving history step |BENCH |BLOCKED |Placeholder animation only (OI-10) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-032,TC-WFL-032>> |Full nominal session on the bench |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-WFL-033,TC-WFL-033>> |Full nominal session with Node 0x04 hardware |HIL |PASS |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: complete session through Screens 4-18 and USB copy (48 files); defects seen during the run are raised separately (ORPT-156, ORPT-162) (see <<FIG-S05-02,FIG-S05-02>>, <<FIG-S07-03,FIG-S07-03>>, <<FIG-S15-01,FIG-S15-01>>, <<FIG-S17-01,FIG-S17-01>>, <<FIG-S18-03,FIG-S18-03>>) |-
+|===
+
+=== SBR - Status Bar and Controller Supervision
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-SBR-002,TC-SBR-002>> |GPS indicator |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-SBR-003,TC-SBR-003>> |Controller offline detection (heartbeat timeout) |BENCH |PASS |Bench session (development build, 2026-10-13/14), m1_bench_sim/logs; Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: offline banner shown (see <<FIG-SB-02,FIG-SB-02>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-SBR-004,TC-SBR-004>> |Operator-facing wording |INSP |*FAIL* |Code review 2026-10-23: 7 texts use the internal name; visible in FIG-ALM-03 (see <<FIG-ALM-03,FIG-ALM-03>>) |ORPT-168
+|===
+
+=== ALM - Alarm Handling
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-001,TC-ALM-001>> |Alarm centre shows active alarms |BENCH |*FAIL* |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: cards, colours and count correct; Safe Mode card description cut off (see <<FIG-ALM-01,FIG-ALM-01>>) |ORPT-162
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-004,TC-ALM-004>> |Alarms clear when the condition returns to normal |HIL |*FAIL* |Reported by tester on target; Node 0x04 clears the bit only on acknowledge |N04-01
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-005,TC-ALM-005>> |Alarm Silence |TGFX |*FAIL* |Silence has no function; no buzzer or silence object |ORPT-165
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-006,TC-ALM-006>> |More than eight simultaneous alarms |BENCH |*FAIL* |Code review: alarm centre holds 8 cards |ORPT-166
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-008,TC-ALM-008>> |Dashboard critical popup acknowledge |BENCH |*FAIL* |Reported by tester on target / code review: popup only hides, nothing is sent |ORPT-161
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-010,TC-ALM-010>> |Session resume decision (bit 18) |BENCH |*FAIL* |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: popup shown after the Node 0x04 restart, but its text overlaps the Screen 7 content (see <<FIG-ALM-03,FIG-ALM-03>>, <<FIG-ALM-05,FIG-ALM-05>>) |ORPT-169
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-013,TC-ALM-013>> |Resume prompt after power loss during priming |HIL |*FAIL* |Reported by tester on target: no popup (see <<FIG-ALM-03,FIG-ALM-03>>) |ORPT-163
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-ALM-014,TC-ALM-014>> |Safe Mode Active alarm and reason |HIL |BLOCKED |Reason display pending Node 0x04 team answer (OI-04, OI-05) |-
+|===
+
+=== LOG - SD Card CAN Logging (on target)
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-LOG-001,TC-LOG-001>> |SD card detection, mount and file creation |HIL |PASS |Hardware session SD logs (development build, 2026-10); card listing 2026-10-17 (FIG-LOG-01) shows IDLE, CANLOG and _PART2 files (see <<FIG-LOG-01,FIG-LOG-01>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-LOG-002,TC-LOG-002>> |Log integrity check |HIL |PASS |Hardware logs, development build, SD card read 2026-10-17: check_canlog.py on 60 files - CRC chain and line numbers correct in all files, 0 dropped frames; files without END are power-cut sessions continued in _PART files (evidence/check_canlog_sd_2026-10-17.txt) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-LOG-004,TC-LOG-004>> |Power cut during a session |HIL |PASS |Hardware logs, development build, 2026-10-17: six power cuts during sessions; each session continued in a _PART2/_PART3 file ending with END, integrity check passed, 0 dropped (evidence/check_canlog_sd_2026-10-17.txt, FIG-LOG-01); loss bound per save interval verified by TC-HST-004/005 |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-LOG-007,TC-LOG-007>> |Operator inputs are logged |HIL |BLOCKED |Not implemented (OI-03) |-
+|===
+
+=== USB - USB Log Transfer
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-USB-002,TC-USB-002>> |Copy result and size check |HIL |PASS |Hardware logs, development build: 13/13 files copied to the stick on 2026-10-16 are identical to the SD card files (size and SHA-256); USB copy integrity check passed (evidence/usb_vs_sd_compare_2026-10-16.txt, check_canlog_usb_2026-10-16.txt); 48-file copy on the release candidate shown in FIG-S18-03 (see <<FIG-S18-03,FIG-S18-03>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-USB-003,TC-USB-003>> |Files already on the stick are skipped |HIL |PASS |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: 'No new logs to copy' (see <<FIG-USB-02,FIG-USB-02>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-USB-004,TC-USB-004>> |Cancel during copy |HIL |PASS |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: 'Copy cancelled, 18 files copied' (see <<FIG-USB-03,FIG-USB-03>>) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-USB-005,TC-USB-005>> |Stick pulled out during copy |HIL |PASS |Hardware session with Node 0x04, release-candidate build, photos 2026-10-23: 'USB removed during copy - plug it in again to finish' (see <<FIG-USB-04,FIG-USB-04>>) |-
+|===
+
+=== NFR - Non-Functional, Robustness and Performance
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-NFR-004,TC-NFR-004>> |Long-duration session (8 h) |BENCH |NOT RUN |Scheduled as an overnight bench run on the release candidate; all hardware sessions to date ran without freeze or reset, with 0 dropped frames in every log (longest continuous session 6 min 54 s, evidence/check_canlog_sd_2026-10-17.txt) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-NFR-005,TC-NFR-005>> |Real-time clock |HIL |BLOCKED |RTC not integrated (OI-08, OI-09) |-
+|<<../test_specification/TS-DISP-002_Display_Node10_Test_Specification.adoc#TC-NFR-006,TC-NFR-006>> |Node 0x04 recovers from a generic error |HIL |*FAIL* |Node 0x04 code review: error reset never called |N04-03
+|===
+
+=== REG - Regression and Release Readiness
+
+[cols="2,4,1,1,4,1",options="header"]
+|===
+|Test case |Title |Env |Result |Evidence / remarks |Defect
+|===
+
+== Defect Register
+
+[cols="1,4,2,1,2",options="header"]
+|===
+|ID |Title |Component |Severity |Found by
+|ORPT-156 |Organ Details: Harvest Hospital text appears in the Destination field |Display Node 0x10 |Major |TC-WFL-014
+|ORPT-157 |Organ Details: Destination Institution limited to 9 characters |Display Node 0x10 |Minor |TC-WFL-015
+|ORPT-158 |Organ Details: Weight field accepts non-numeric characters |Display Node 0x10 |Major |TC-WFL-016
+|ORPT-159 |Advanced configuration: setpoint acceptance is not verified |Display Node 0x10 |Major |TC-CAN-014, TC-WFL-021
+|ORPT-160 |Advanced configuration: limits exceed the range accepted by Node 0x04 |Display Node 0x10 |Major |TC-WFL-020
+|ORPT-161 |Dashboard critical popup: Acknowledge does not acknowledge |Display Node 0x10 |Major |TC-ALM-008
+|ORPT-162 |Alarm centre: card description of latched alarms cut off |Display Node 0x10 |Minor |TC-ALM-001
+|ORPT-163 |Resume / Abandon prompt missing after power loss during priming |Display Node 0x10 / Main controller Node 0x04 |Critical |TC-ALM-013
+|ORPT-164 |CANopen communication reset (NMT 0x82) is not supported |Display Node 0x10 |Major |TC-CAN-016
+|ORPT-165 |Alarm card Silence button has no function |Display Node 0x10 |Minor |TC-ALM-005
+|ORPT-166 |Alarm centre shows at most 8 alarms |Display Node 0x10 |Major |TC-ALM-006
+|ORPT-167 |Session start refused without operator feedback |Display Node 0x10 |Major |TC-CAN-011
+|ORPT-168 |Operator texts use the internal development name of the controller |Display Node 0x10 |Minor |TC-SBR-004
+|N04-01 |Temperature / pressure high alarms do not clear by themselves |Main controller Node 0x04 |Major |TC-ALM-004
+|N04-02 |Node 0x04 stays Pre-Operational after CAN TX overflow at power-on |Main controller Node 0x04 |Critical |TC-CAN-017
+|N04-03 |Node 0x04 never resets CANopen errors |Main controller Node 0x04 |Major |TC-NFR-006
+|ORPT-169 |Decision popup text overlaps the screen behind it |Display Node 0x10 |Major |TC-ALM-010
+|===
+
+[[ORPT-156]]
+=== ORPT-156 - Organ Details: Harvest Hospital text appears in the Destination field
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-156[ORPT-156]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-WFL-014
+|Description |On Screen 8, text typed in the third field (Harvest Hospital) is also shown in the fourth field (Destination Institution).
+|Expected |Each field shows only its own text.
+|Actual |Destination shows the Harvest Hospital text.
+|Proposed fix |Find the cause on target (field wiring in View and generated code reviewed and correct; check keyboard target switching and the 10-character Destination buffer, see ORPT-157).
+|===
+
+[[ORPT-157]]
+=== ORPT-157 - Organ Details: Destination Institution limited to 9 characters
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-157[ORPT-157]
+|Component |Display Node 0x10
+|Severity |Minor
+|Status |Open
+|Found by |TC-WFL-015
+|Description |The Destination Institution wildcard buffer is 10 characters (9 usable); Harvest Hospital has 25.
+|Expected |Same capacity for both institution names.
+|Actual |Longer destination names are cut off.
+|Proposed fix |Increase the wildcard buffer size of btnDestinationInstitution in TouchGFX Designer.
+|===
+
+[[ORPT-158]]
+=== ORPT-158 - Organ Details: Weight field accepts non-numeric characters
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-158[ORPT-158]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-WFL-016
+|Description |The Weight field uses the full keyboard; parsing stops at the first non-digit.
+|Expected |Digits only; the weight sent equals the typed value.
+|Actual |'abc' is sent as 0 g and '12a5' as 12 g, without warning.
+|Proposed fix |Restrict the field to digits (numeric keypad or filter in characterTyped) and validate before Continue.
+|===
+
+[[ORPT-159]]
+=== ORPT-159 - Advanced configuration: setpoint acceptance is not verified
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-159[ORPT-159]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-CAN-014, TC-WFL-021
+|Description |Screen 13 Confirm sends the setpoints and opens Screen 14 immediately; the display does not read 0x2201 back, although Node 0x04 restores the old value when it rejects a setpoint.
+|Expected |The operator sees whether the new setpoints were accepted.
+|Actual |A rejected or failed setpoint is not noticed.
+|Proposed fix |Read 0x2201 back after the write; stay on Screen 13 with a message on rejection or failure.
+|===
+
+[[ORPT-160]]
+=== ORPT-160 - Advanced configuration: limits exceed the range accepted by Node 0x04
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-160[ORPT-160]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-WFL-020
+|Description |Screen 13 allows 0-20 degC and 0-100 mmHg; Node 0x04 accepts 0-15 degC and 0-50 mmHg.
+|Expected |The screen limits match the controller limits.
+|Actual |Values above 15 degC / 50 mmHg can be confirmed and are rejected by Node 0x04.
+|Proposed fix |Set TEMP_MAX_C = 15 and PRESSURE_MAX_MMHG = 50 in Screen13View.
+|===
+
+[[ORPT-161]]
+=== ORPT-161 - Dashboard critical popup: Acknowledge does not acknowledge
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-161[ORPT-161]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-ALM-008
+|Description |The Acknowledge button of the Screen 15 critical popup is wired in Designer to hide the container; the View handler that sends the acknowledgement is never called.
+|Expected |Acknowledgement written to Node 0x04 and popup closed.
+|Actual |Popup hidden locally only; the alarm stays active in Node 0x04.
+|Proposed fix |Replace the Designer hide action by the custom handler that calls acknowledgeAlarms().
+|===
+
+[[ORPT-162]]
+=== ORPT-162 - Alarm centre: card description of latched alarms cut off
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-162[ORPT-162]
+|Component |Display Node 0x10
+|Severity |Minor
+|Status |Open
+|Found by |TC-ALM-001
+|Description |The grey description line of permanent-latch alarm cards (e.g. Safe Mode Active) is longer than its text area and ends mid-sentence (FIG-ALM-01).
+|Expected |Full description visible.
+|Actual |Text cut off after '... it does not'.
+|Proposed fix |Shorten the latched-alarm description in TopStatusBar.cpp or enlarge textAlarmDescription in AlarmMessageTemplate.
+|===
+
+[[ORPT-163]]
+=== ORPT-163 - Resume / Abandon prompt missing after power loss during priming
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-163[ORPT-163]
+|Component |Display Node 0x10 / Main controller Node 0x04
+|Severity |Critical
+|Status |Open
+|Found by |TC-ALM-013
+|Description |After a full power cycle during PRIMING no Resume / Abandon popup was shown. Node 0x04 stores PRIMING as an active session and raises bit 18 after boot.
+|Expected |Resume / Abandon popup shown after restart.
+|Actual |No popup; session state unclear to the operator.
+|Proposed fix |Reproduce with a CAN trace from power-on: check that bit 18 is received and that Screen 1 / status bar show the popup; check the Node 0x04 session-state EEPROM record.
+|===
+
+[[ORPT-164]]
+=== ORPT-164 - CANopen communication reset (NMT 0x82) is not supported
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-164[ORPT-164]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-CAN-016; reproduced on the PC by unit test <<UT-COAPP-RESET-001,UT-COAPP-RESET-001>> (2026-10-28)
+|Description |A communication reset re-runs CANopen initialisation; the middleware refuses to register the receive filters again because FDCAN1 is already started, so initialisation fails. The unit test shows `APP_CanOpen_Init()` returning CO_ERROR_OUT_OF_MEMORY at stage CANOPEN_INIT with the node left off the bus.
+|Expected |Display returns to Operational after the reset.
+|Actual |Display CANopen stops until power cycle.
+|Proposed fix |Allow filter re-registration on reset (reuse existing filters or stop/restart FDCAN1 in the reset path).
+|===
+
+[[ORPT-165]]
+=== ORPT-165 - Alarm card Silence button has no function
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-165[ORPT-165]
+|Component |Display Node 0x10
+|Severity |Minor
+|Status |Open
+|Found by |TC-ALM-005
+|Description |The Silence button on every alarm card does nothing; there is no buzzer and no silence object in the interface.
+|Expected |Silence mutes the audible alarm.
+|Actual |No effect.
+|Proposed fix |Remove the button until a buzzer and silence object exist, or implement them.
+|===
+
+[[ORPT-166]]
+=== ORPT-166 - Alarm centre shows at most 8 alarms
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-166[ORPT-166]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-ALM-006
+|Description |The alarm centre has 8 card slots; Node 0x04 defines 23 alarm bits.
+|Expected |All active alarms listed.
+|Actual |Alarms beyond 8 get no card and are not counted.
+|Proposed fix |Increase MAX_ALARM_CARDS to the number of table entries (23).
+|===
+
+[[ORPT-167]]
+=== ORPT-167 - Session start refused without operator feedback
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-167[ORPT-167]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-CAN-011
+|Description |If Node 0x04 does not accept the IDLE confirm (e.g. a sensor fault is latched) the validation popup closes after 3 s with no message.
+|Expected |Operator told that the session could not start and why.
+|Actual |Popup closes silently.
+|Proposed fix |Show a message on CONFIRM_TIMED_OUT, including active alarms when known.
+|===
+
+[[ORPT-168]]
+=== ORPT-168 - Operator texts use the internal development name of the controller
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-168[ORPT-168]
+|Component |Display Node 0x10
+|Severity |Minor
+|Status |Open
+|Found by |TC-SBR-004
+|Description |Seven operator-visible texts in TopStatusBar (offline banner and decision popups) use the internal project name of the main controller.
+|Expected |Operator wording such as 'Controller'.
+|Actual |Internal name shown to the operator.
+|Proposed fix |Reword the texts in TopStatusBar.cpp.
+|===
+
+[[N04-01]]
+=== N04-01 - Temperature / pressure high alarms do not clear by themselves
+
+[cols="1,4"]
+|===
+|Jira |Not in ORPT; to be raised by the Node 0x04 team
+|Component |Main controller Node 0x04
+|Severity |Major
+|Status |Open
+|Found by |TC-ALM-004
+|Description |Node 0x04 clears alarm bits 0-3 only on operator acknowledge, not when the value returns to normal.
+|Expected |Alarm cleared (or marked inactive) when the condition is gone.
+|Actual |Alarm stays active until acknowledged.
+|Proposed fix |Clear the bit in Node 0x04 when the value returns to range (Node 0x04 firmware team).
+|===
+
+[[N04-02]]
+=== N04-02 - Node 0x04 stays Pre-Operational after CAN TX overflow at power-on
+
+[cols="1,4"]
+|===
+|Jira |Not in ORPT; to be raised by the Node 0x04 team
+|Component |Main controller Node 0x04
+|Severity |Critical
+|Status |Open
+|Found by |TC-CAN-017
+|Description |When Node 0x04 starts alone on the bus (no ACK), it latches CO_EM_CAN_TX_OVERFLOW (EMCY 10 81 10 14) and never returns to Operational; the display then shows the controller offline.
+|Expected |Node 0x04 reaches Operational once another node acknowledges its frames.
+|Actual |Session cannot start until Node 0x04 is reset with the display already running.
+|Proposed fix |Clear the overflow condition in the Node 0x04 CAN driver when transmission recovers (Node 0x04 firmware team).
+|===
+
+[[N04-03]]
+=== N04-03 - Node 0x04 never resets CANopen errors
+
+[cols="1,4"]
+|===
+|Jira |Not in ORPT; to be raised by the Node 0x04 team
+|Component |Main controller Node 0x04
+|Severity |Major
+|Status |Open
+|Found by |TC-NFR-006
+|Description |Node 0x04 never calls the CANopen error reset; a FAULT reported with the generic EMCY code keeps it Pre-Operational until reboot.
+|Expected |Return to Operational when the error is gone.
+|Actual |Pre-Operational until reboot.
+|Proposed fix |Call CO_errorReset() when the condition clears (Node 0x04 firmware team).
+|===
+
+[[ORPT-169]]
+=== ORPT-169 - Decision popup text overlaps the screen behind it
+
+[cols="1,4"]
+|===
+|Jira |https://otx-htic.atlassian.net/browse/ORPT-169[ORPT-169]
+|Component |Display Node 0x10
+|Severity |Major
+|Status |Open
+|Found by |TC-ALM-010
+|Description |The status-bar decision popup (resume / abandon, Are You Sure?) is drawn over the current screen without an opaque panel, so its title, question and buttons mix with the labels of the screen underneath (seen on Screen 7, FIG-ALM-03 and FIG-ALM-05).
+|Expected |Popup on a solid background; only the popup text is readable.
+|Actual |Popup text and screen text overlap; the safety question is hard to read.
+|Proposed fix |Give containerActionPopup an opaque full-size background (and dim the screen behind it).
+|===
+
+[[open-items]]
+== Open Items
+
+[cols="1,2,4,1,1",options="header"]
+|===
+|ID |Item |Description |Owner |Related test
+|OI-01 |Fill phase limited by a maximum time |Node 0x04 ends the fill after a fixed maximum time; required: stop only when the level sensor detects fluid. |Node 0x04 |TC-WFL-012
+|OI-02 |Manual flush from the dashboard |Feature required on Screen 15; needs a flush request object and behaviour in Node 0x04 first. |Both |TC-WFL-025
+|OI-03 |Logging of operator entries |Organ details (ID, hospitals, blood type, clamp time) and operator setpoint changes are not in the SD log (only CAN frames are logged). |Node 0x10 |TC-LOG-007
+|OI-04 |Safe Mode reason not shown |0x2190 sub2 (safe_mode_reason) is received but not displayed; awaiting Node 0x04 team decision. |Both |TC-ALM-014
+|OI-05 |Clearing a permanent Safe Mode in service |Refrigeration, actuator, motor and pressure-range failures are stored and carried into every boot; no service clear path exists. |Node 0x04 |TC-ALM-014
+|OI-06 |PIN verification not defined |Any 6-digit PIN is accepted; auth_status is always 1; attempt counter and lockout not implemented. |Both |TC-WFL-007
+|OI-07 |Screen 1 validation is a wait only |The 'Validating Sensors & Subsystems' popup waits for the Node 0x04 confirm; no readiness status is shown. |Node 0x10 |TC-WFL-005
+|OI-08 |Alarm timestamps |Alarms carry no time of day (needs RTC). |Node 0x10 |TC-NFR-005
+|OI-09 |RTC not integrated |Time of day is not kept across power cycles. |Node 0x10 |TC-NFR-005
+|OI-10 |Screen 17 'Saving History' placeholder |Animation only; no save operation behind it. |Node 0x10 |TC-WFL-030
+|OI-11 |Battery data simulated |Battery level and runtime are simulated; no battery data in the interface. |Both |TC-WFL-024
+|OI-12 |Hypothermic (HOPE) option still selectable |HOPE is not used in this release, but Screen 9 still offers Hypothermic Oxygenated Perfusion, which leads to the unused oxygenator Screens 10 and 11. |Node 0x10 |TC-WFL-017
+|OI-13 |Dashboard 'Next Flushing' is display-only |Countdown is computed locally, not from Node 0x04. |Both |TC-WFL-023
+|OI-14 |No low temperature / low pressure alarms |Node 0x04 defines no TEMP LOW or PRESSURE LOW bit. |Node 0x04 |TC-ALM-001
+|OI-15 |Emergency stop bit 24 not defined |The display table includes bit 24; the Node 0x04 code does not define it. |Node 0x04 |TC-ALM-001
+|OI-16 |Test bypass macros in Node 0x04 debug build |WORKFLOW_TEST_BYPASS_SENSOR_GATE and the stepper bypass are still in the Node 0x04 build configuration. |Node 0x04 |TC-WFL-033
+|OI-17 |Requirement baseline outdated |CIOET-ORGPORT-SWRS-RVD-2026-001 still describes node 0x06, W25Q128 flash logging, TinyUSB export on SDO trigger, NMT start by Node 0x04 and a five-screen HMI. The implementation uses node 0x10, SD card logging, USB copy on Screen 18, autonomous Operational and 18 screens. The SWRS must be updated. |Node 0x10 |-
+|OI-19 |No audible alarm |No buzzer is driven on alarm activation (SWRS-M2-HMI-05 item 4). |Node 0x10 |TC-ALM-005
+|OI-UT-001 |Requirement IDs for unit tests |SRS requirement IDs for the display firmware must be allocated; the design references in the traceability matrix are then replaced by requirement IDs. |Systems Engineering |Unit tests
+|OI-UT-002 |Unit test coverage measurement |Statement and branch coverage measurement (gcov) of the host unit tests to be added to the runner and reported. |Firmware Team |Unit tests
+|OI-UT-003 |Unit tests in the build pipeline |The host unit test runner to be added to the build pipeline so it runs on every change. |Firmware Team |Unit tests
+|===
+
+== Evidence
+
+Figures follow the evidence catalogue of the test specification: one figure per screen state.
+Where a figure has not been captured yet, a placeholder states what to capture. To add a figure,
+save it as `evidence/<FIG-ID>.png` and replace the placeholder block with the `image::` line shown
+in it.
+
+Other evidence:
+
+* Bench CAN traces: `CM7/test/m1_bench_sim/logs/can_trace_*.csv`
+* SD card logs from bench and hardware sessions (archived with the test records)
+* Host test output: `CM7/test/host_canlog/out/` (compared with `expected/`)
+* Build logs of the release candidate
+
+[[FIG-S01-01]]
+=== FIG-S01-01 - Screen 1 - Start-up, idle
+
+image::evidence/FIG-S01-01.jpg[FIG-S01-01,width=700]
+
+[[FIG-S01-02]]
+=== FIG-S01-02 - Screen 1 - Validation popup
+
+image::evidence/FIG-S01-02.jpg[FIG-S01-02,width=700]
+
+[[FIG-S02-01]]
+=== FIG-S02-01 - Screen 2 - RFID authentication
+
+image::evidence/FIG-S02-01.jpg[FIG-S02-01,width=700]
+
+[[FIG-S02-02]]
+=== FIG-S02-02 - Screen 2 - PIN pad
+
+image::evidence/FIG-S02-02.jpg[FIG-S02-02,width=700]
+
+[[FIG-S03-01]]
+=== FIG-S03-01 - Screen 3 - Organ selected
+
+image::evidence/FIG-S03-01.jpg[FIG-S03-01,width=700]
+
+[[FIG-S03-02]]
+=== FIG-S03-02 - Screen 3 - No organ selected
+
+image::evidence/FIG-S03-02.jpg[FIG-S03-02,width=700]
+
+[[FIG-S04-01]]
+=== FIG-S04-01 - Screen 4 - Temperature override
+
+image::evidence/FIG-S04-01a.jpg[FIG-S04-01,width=700]
+
+image::evidence/FIG-S04-01b.jpg[FIG-S04-01,width=700]
+
+[[FIG-S05-01]]
+=== FIG-S05-01 - Screen 5 - Stabilising
+
+image::evidence/FIG-S05-01.jpg[FIG-S05-01,width=700]
+
+[[FIG-S05-02]]
+=== FIG-S05-02 - Screen 5 - Stable
+
+image::evidence/FIG-S05-02.jpg[FIG-S05-02,width=700]
+
+[[FIG-S06-01]]
+=== FIG-S06-01 - Screen 6 - Filling
+
+image::evidence/FIG-S06-01.jpg[FIG-S06-01,width=700]
+
+[[FIG-S06-02]]
+=== FIG-S06-02 - Screen 6 - Fill complete
+
+image::evidence/FIG-S06-02.jpg[FIG-S06-02,width=700]
+
+[[FIG-S07-01]]
+=== FIG-S07-01 - Screen 7 - Stage 1 priming
+
+image::evidence/FIG-S07-01.jpg[FIG-S07-01,width=700]
+
+[[FIG-S07-02]]
+=== FIG-S07-02 - Screen 7 - Stage 2 bubble detection
+
+image::evidence/FIG-S07-02.jpg[FIG-S07-02,width=700]
+
+[[FIG-S07-03]]
+=== FIG-S07-03 - Screen 7 - Priming successful
+
+image::evidence/FIG-S07-03.jpg[FIG-S07-03,width=700]
+
+[[FIG-S08-01]]
+=== FIG-S08-01 - Screen 8 - Organ details filled
+
+image::evidence/FIG-S08-01.jpg[FIG-S08-01,width=700]
+
+[[FIG-S08-03]]
+=== FIG-S08-03 - Screen 8 - Empty form
+
+image::evidence/FIG-S08-03.jpg[FIG-S08-03,width=700]
+
+[[FIG-S08-02]]
+=== FIG-S08-02 - Screen 8 - Keyboard open
+
+image::evidence/FIG-S08-02.jpg[FIG-S08-02,width=700]
+
+[[FIG-S09-01]]
+=== FIG-S09-01 - Screen 9 - Mode selected
+
+image::evidence/FIG-S09-01.jpg[FIG-S09-01,width=700]
+
+[[FIG-S12-01]]
+=== FIG-S12-01 - Screen 12 - Recommended configuration
+
+image::evidence/FIG-S12-01.jpg[FIG-S12-01,width=700]
+
+[[FIG-S13-01]]
+=== FIG-S13-01 - Screen 13 - Advanced override
+
+image::evidence/FIG-S13-01.jpg[FIG-S13-01,width=700]
+
+[[FIG-S14-01]]
+=== FIG-S14-01 - Screen 14 - System ready
+
+image::evidence/FIG-S14-01.jpg[FIG-S14-01,width=700]
+
+[[FIG-S15-01]]
+=== FIG-S15-01 - Screen 15 - Dashboard
+
+image::evidence/FIG-S15-01.jpg[FIG-S15-01,width=700]
+
+[[FIG-S15-02]]
+=== FIG-S15-02 - Screen 15 - Battery overlay
+
+image::evidence/FIG-S15-02.jpg[FIG-S15-02,width=700]
+
+[[FIG-S15-03]]
+=== FIG-S15-03 - Screen 15 - Critical alarm popup
+
+image::evidence/FIG-S15-03.jpg[FIG-S15-03,width=700]
+
+[[FIG-S16-01]]
+=== FIG-S16-01 - Screen 16 - Arrival checklist
+
+image::evidence/FIG-S16-01.jpg[FIG-S16-01,width=700]
+
+[[FIG-S17-01]]
+=== FIG-S17-01 - Screen 17 - Transport summary
+
+image::evidence/FIG-S17-01.jpg[FIG-S17-01,width=700]
+
+[[FIG-S17-02]]
+=== FIG-S17-02 - Screen 17 - Saving history
+
+image::evidence/FIG-S17-02.jpg[FIG-S17-02,width=700]
+
+[[FIG-S18-01]]
+=== FIG-S18-01 - Screen 18 - USB panel
+
+image::evidence/FIG-S18-01.jpg[FIG-S18-01,width=700]
+
+[[FIG-S18-02]]
+=== FIG-S18-02 - Screen 18 - Copy in progress
+
+image::evidence/FIG-S18-02a.jpg[FIG-S18-02,width=700]
+
+image::evidence/FIG-S18-02b.jpg[FIG-S18-02,width=700]
+
+[[FIG-S18-03]]
+=== FIG-S18-03 - Screen 18 - Copy done
+
+image::evidence/FIG-S18-03.jpg[FIG-S18-03,width=700]
+
+[[FIG-S18-04]]
+=== FIG-S18-04 - Screen 18 - Safe to power off
+
+image::evidence/FIG-S18-04.jpg[FIG-S18-04,width=700]
+
+[[FIG-SB-01]]
+=== FIG-SB-01 - Status bar - normal
+
+image::evidence/FIG-S14-01.jpg[FIG-SB-01,width=700]
+
+[[FIG-SB-02]]
+=== FIG-SB-02 - Status bar - controller offline
+
+image::evidence/FIG-SB-02.jpg[FIG-SB-02,width=700]
+
+[[FIG-ALM-01]]
+=== FIG-ALM-01 - Alarm centre
+
+image::evidence/FIG-ALM-01.jpg[FIG-ALM-01,width=700]
+
+image::evidence/FIG-ALM-01b.jpg[FIG-ALM-01,width=700]
+
+[[FIG-ALM-03]]
+=== FIG-ALM-03 - Decision popup - session resume
+
+image::evidence/FIG-ALM-03.jpg[FIG-ALM-03,width=700]
+
+[[FIG-ALM-05]]
+=== FIG-ALM-05 - Decision popup - confirmation
+
+image::evidence/FIG-ALM-05.jpg[FIG-ALM-05,width=700]
+
+[[FIG-LOG-01]]
+=== FIG-LOG-01 - SD card contents
+
+image::evidence/FIG-LOG-01.png[FIG-LOG-01,width=700]
+
+[[FIG-USB-01]]
+=== FIG-USB-01 - USB stick contents
+
+image::evidence/FIG-USB-01.png[FIG-USB-01,width=700]
+
+[[FIG-USB-02]]
+=== FIG-USB-02 - USB copy - nothing new
+
+image::evidence/FIG-USB-02.jpg[FIG-USB-02,width=700]
+
+[[FIG-USB-03]]
+=== FIG-USB-03 - USB copy - cancelled
+
+image::evidence/FIG-USB-03.jpg[FIG-USB-03,width=700]
+
+[[FIG-USB-04]]
+=== FIG-USB-04 - USB copy - stick removed
+
+image::evidence/FIG-USB-04.jpg[FIG-USB-04,width=700]
+
+[[FIG-CAN-01]]
+=== FIG-CAN-01 - Heartbeat 0x710 every 500 ms, state Operational
+
+image::evidence/FIG-CAN-01.png[FIG-CAN-01,width=700]
+
+[[FIG-CAN-02]]
+=== FIG-CAN-02 - NMT Start test
+
+image::evidence/FIG-CAN-02.png[FIG-CAN-02,width=700]
+
+[[FIG-CAN-03]]
+=== FIG-CAN-03 - RPDO1 received and stored
+
+image::evidence/FIG-CAN-03.png[FIG-CAN-03,width=700]
+
+[[FIG-CAN-04]]
+=== FIG-CAN-04 - SDO write confirmed and TPDO1 0x190 sent
+
+image::evidence/FIG-CAN-04.png[FIG-CAN-04,width=700]
+
+[[FIG-CAN-05]]
+=== FIG-CAN-05 - TPDO1 0x190 between heartbeats
+
+image::evidence/FIG-CAN-05.png[FIG-CAN-05,width=700]
+
+[[unit-test-details]]
+== Unit Test Details - Middleware and Application Modules
+
+This chapter records the execution of UT-SPEC-DISP-002 v0.1, the automated unit tests of the display's
+own middleware and application modules. The summary is in <<unit-tests,Unit Tests of the Middleware and
+Application Modules>>. The purpose, scope and test doubles are defined in UT-SPEC-DISP-002.
+
+=== Unit Test Run
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+|Source state |Working copy of 2026-10-28, including the Screen 8 changes of 2026-10-27 (not part of the unit test scope)
+|Test run |2026-10-28 19:43:50   Host: MINGW64_NT-10.0-26200   Compiler: gcc.exe (i686-win32-dwarf-rev1, Built by MinGW-Builds project) 13.2.0
+|Host |Windows 11 PC, Git Bash (MINGW64_NT-10.0-26200)
+|Compiler |GCC 13.2.0 MinGW (i686-w64-mingw32) from TouchGFX 4.26.1, `-std=gnu11 -O0 -Wall -Wextra`
+|Command |`bash CM7/test/host_unit/run_host_unit.sh`
+|Evidence |`evidence/UT-DISP-002-TestEvidence_V1.0.txt` (copy of `CM7/test/host_unit/out/UT-DISP-002-TestEvidence_V1.0.txt`)
+|Test doubles |As listed in UT-SPEC-DISP-002, section Test Doubles; no deviation
+|===
+
+All seven test programs built without errors or warnings. 137 test cases were executed: 136 passed and
+1 failed. The failing test case, UT-COAPP-RESET-001, reproduces the known defect ORPT-164 and shows its
+cause (see <<ut-defects,Unit Test Defects>>). No new defect was found.
+
+[[automated-test-execution-procedure]]
+=== Automated Test Execution
+
+The procedure of UT-SPEC-DISP-002 was followed. The script built all seven test programs without errors
+or warnings, ran them, and wrote the evidence file below. The `s_results` list in it is the evidence for
+every test case in this report.
+
+*Combined Test Evidence*
+
+[source]
+----
+include::evidence/UT-DISP-002-TestEvidence_V1.0.txt[]
+----
+
+=== Module: mw_can - FDCAN1 Middleware
+
+==== Overview
+
+`mw_can` wraps FDCAN1 (classical CAN 2.0B, 500 kbit/s) with the STM32 HAL and fulfils the `can_if.h` PIF contract through `MW_CAN_If`. It rejects every frame that matches no filter, gives each registered RX object its own hardware filter, drains the shared RX FIFO0 in the interrupt with a 16-frame budget, counts bus-off events and reports every RX/TX frame to an optional monitor (the SD card CAN log). The test replaces the HAL FDCAN driver with a fake that records every call and holds a scripted RX FIFO.
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app_middleware/can/mw_can.c`
+|Test program |`CM7/test/host_unit/src/test_mw_can.c`
+|Result |29 run, 29 passed, 0 failed
+|===
+
+==== Initialisation
+
+[[UT-MWCAN-INIT-001]]
+===== UT-MWCAN-INIT-001 - Init rejects all unfiltered frames
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-INIT-001
+|Design reference |mw_can.h - MW_CAN_Init()
+|Objective |Verify that `MW_CAN_Init()` configures the global filter to reject non-matching standard and extended frames and remote frames.
+|Preconditions |Fake HAL returns HAL_OK.
+|Test Steps |Call `MW_CAN_Init()`; inspect the arguments of `HAL_FDCAN_ConfigGlobalFilter()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true. Global filter called once with FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE. +
+`s_results[]` entry `UT-MWCAN-INIT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-INIT-002]]
+===== UT-MWCAN-INIT-002 - Init reports a HAL global filter failure
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-INIT-002
+|Design reference |mw_can.h - MW_CAN_Init()
+|Objective |Verify that a HAL failure while configuring the global filter is reported.
+|Preconditions |Fake `HAL_FDCAN_ConfigGlobalFilter()` returns HAL_ERROR.
+|Test Steps |Call `MW_CAN_Init()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false. +
+`s_results[]` entry `UT-MWCAN-INIT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-INIT-003]]
+===== UT-MWCAN-INIT-003 - Init clears filters, bus-off count and started state
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-INIT-003
+|Design reference |mw_can.h - MW_CAN_Init()
+|Objective |Verify that a second `MW_CAN_Init()` starts the filter numbering from 0 again, clears the bus-off count and allows registration again.
+|Preconditions |Two filters registered, one bus-off event, `MW_CAN_Start()` done.
+|Test Steps |Call `MW_CAN_Init()`; read the bus-off count; register a filter. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Init returns true, bus-off count is 0, the new filter is accepted with FilterIndex 0. +
+`s_results[]` entry `UT-MWCAN-INIT-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== RX Filter Registration
+
+[[UT-MWCAN-FILT-001]]
+===== UT-MWCAN-FILT-001 - Filter registered as standard-ID mask filter to FIFO0
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-FILT-001
+|Design reference |can_if.h - PIF_CAN_RegisterRxFilterFn
+|Objective |Verify the HAL filter configuration produced for a registered identifier and mask, and that slots are used in call order.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Register 0x704/0x7FF, then 0x080/0x7F0. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Both return true. First HAL filter: standard ID, index 0, FDCAN_FILTER_MASK, FDCAN_FILTER_TO_RXFIFO0, ID1 0x704, ID2 0x7FF. Second filter uses index 1. +
+`s_results[]` entry `UT-MWCAN-FILT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-FILT-002]]
+===== UT-MWCAN-FILT-002 - NULL callback rejected
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-FILT-002
+|Design reference |can_if.h - PIF_CAN_RegisterRxFilterFn
+|Objective |Verify that a filter without a callback is rejected before any HAL call.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Register 0x181 with a NULL callback. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false; `HAL_FDCAN_ConfigFilter()` not called. +
+`s_results[]` entry `UT-MWCAN-FILT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-FILT-003]]
+===== UT-MWCAN-FILT-003 - Seventeenth filter rejected
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-FILT-003
+|Design reference |mw_can.h - MW_CAN_RX_FILTER_MAX
+|Objective |Verify that at most 16 filters (the .ioc StdFiltersNbr) can be registered.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Register 16 filters, then a 17th. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |The first 16 return true; the 17th returns false; the HAL is called 16 times. +
+`s_results[]` entry `UT-MWCAN-FILT-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-FILT-004]]
+===== UT-MWCAN-FILT-004 - HAL filter failure does not consume a slot
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-FILT-004
+|Design reference |can_if.h - PIF_CAN_RegisterRxFilterFn
+|Objective |Verify that a filter the HAL refuses leaves the slot free for the next registration.
+|Preconditions |Fake `HAL_FDCAN_ConfigFilter()` returns HAL_ERROR once.
+|Test Steps |Register a filter (fails), then register again with the HAL returning HAL_OK. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |First call returns false; second returns true with FilterIndex 0. +
+`s_results[]` entry `UT-MWCAN-FILT-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-FILT-005]]
+===== UT-MWCAN-FILT-005 - No registration after start
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-FILT-005
+|Design reference |can_if.h - PIF_CAN_StartFn
+|Objective |Verify that filters cannot be registered once FDCAN1 is started.
+|Preconditions |`MW_CAN_Start()` succeeded.
+|Test Steps |Register a filter. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false; no HAL filter call. +
+`s_results[]` entry `UT-MWCAN-FILT-005` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Start
+
+[[UT-MWCAN-START-001]]
+===== UT-MWCAN-START-001 - Start arms RX FIFO0 and bus-off notifications
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-START-001
+|Design reference |mw_can.h - MW_CAN_Start()
+|Objective |Verify that start activates the RX FIFO0 new-message and bus-off interrupts and starts the controller.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Call `MW_CAN_If.start()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true; notifications activated once with FDCAN_IT_RX_FIFO0_NEW_MESSAGE \| FDCAN_IT_BUS_OFF; `HAL_FDCAN_Start()` called once. +
+`s_results[]` entry `UT-MWCAN-START-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-START-002]]
+===== UT-MWCAN-START-002 - Second start is a no-op
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-START-002
+|Design reference |mw_can.h - MW_CAN_Start()
+|Objective |Verify that starting an already started controller succeeds without touching the HAL again.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Call `MW_CAN_Start()` twice. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Both return true; HAL start and notification calls happen once only. +
+`s_results[]` entry `UT-MWCAN-START-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-START-003]]
+===== UT-MWCAN-START-003 - Start failures reported, not marked started
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-START-003
+|Design reference |mw_can.h - MW_CAN_Start()
+|Objective |Verify that a failing notification or start call is reported and leaves the module retryable.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Fail the notification call, then the start call; then register a filter and start with the HAL OK. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Both failing starts return false (HAL start not called after the notification failure); the filter registration still succeeds; the final start returns true. +
+`s_results[]` entry `UT-MWCAN-START-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Transmit
+
+[[UT-MWCAN-TX-001]]
+===== UT-MWCAN-TX-001 - Standard frame transmitted as classical CAN
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-TX-001
+|Design reference |can_if.h - PIF_CAN_TransmitFn
+|Objective |Verify the TX header and data handed to the hardware TX FIFO for a standard frame.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Transmit 0x710, DLC 1, data 0x05. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true. Header: ID 0x710, standard ID, data frame, DLC code 1, BRS off, classic CAN, no TX events; data byte 0 = 0x05. +
+`s_results[]` entry `UT-MWCAN-TX-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-TX-002]]
+===== UT-MWCAN-TX-002 - Extended frame transmitted with extended ID type
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-TX-002
+|Design reference |can_if.h - PIF_CAN_TransmitFn
+|Objective |Verify that a 29-bit frame is sent with the extended ID type and all 8 data bytes.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Transmit 0x18FF1234, extended, DLC 8. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true; ID type FDCAN_EXTENDED_ID, ID 0x18FF1234, data identical. +
+`s_results[]` entry `UT-MWCAN-TX-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-TX-003]]
+===== UT-MWCAN-TX-003 - NULL frame and DLC > 8 rejected
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-TX-003
+|Design reference |can_if.h - PIF_CAN_TransmitFn
+|Objective |Verify input validation of transmit.
+|Preconditions |Monitor installed.
+|Test Steps |Transmit NULL; transmit a frame with DLC 9. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Both return false; no HAL call; monitor not called. +
+`s_results[]` entry `UT-MWCAN-TX-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-TX-004]]
+===== UT-MWCAN-TX-004 - Full hardware TX FIFO reported, not logged
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-TX-004
+|Design reference |can_if.h - PIF_CAN_TransmitFn
+|Objective |Verify that a frame the hardware refuses is reported to the caller and not logged as sent.
+|Preconditions |Monitor installed; fake `HAL_FDCAN_AddMessageToTxFifoQ()` returns HAL_ERROR.
+|Test Steps |Transmit a frame. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false; monitor not called. +
+`s_results[]` entry `UT-MWCAN-TX-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-TX-005]]
+===== UT-MWCAN-TX-005 - Sent frame reported to the monitor as TX
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-TX-005
+|Design reference |mw_can.h - MW_CAN_SetMonitor()
+|Objective |Verify that every frame the hardware accepted is passed to the monitor with is_tx = true.
+|Preconditions |Monitor installed through `MW_CAN_If.set_monitor`.
+|Test Steps |Transmit 0x190, DLC 4. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true; monitor called once with is_tx = true, ID 0x190, DLC 4. +
+`s_results[]` entry `UT-MWCAN-TX-005` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-TX-006]]
+===== UT-MWCAN-TX-006 - DLC 0 to 8 mapped to the HAL DLC codes
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-TX-006
+|Design reference |mw_can.c - Can_DlcBytesToFdcanCode()
+|Objective |Verify the byte-count to FDCAN DataLength mapping for every classical DLC.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Transmit frames with DLC 0..8. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Every transmit returns true and DataLength equals FDCAN_DLC_BYTES_n for n = DLC. +
+`s_results[]` entry `UT-MWCAN-TX-006` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Receive
+
+[[UT-MWCAN-RX-001]]
+===== UT-MWCAN-RX-001 - Frame routed to the callback of its filter
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-001
+|Design reference |mw_can.c - HAL_FDCAN_RxFifo0Callback()
+|Objective |Verify that a received frame is delivered to the callback of the filter index that matched, with ID, DLC and data intact.
+|Preconditions |Filters 0 (0x181) and 1 (0x281) registered with different callbacks.
+|Test Steps |Queue one frame 0x281, DLC 6, FilterIndex 1; raise the RX FIFO0 interrupt. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Only callback 1 is called, once; ID 0x281, DLC 6, standard, data bytes 0x10..0x15. +
+`s_results[]` entry `UT-MWCAN-RX-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-002]]
+===== UT-MWCAN-RX-002 - All pending frames drained in one interrupt
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-002
+|Design reference |mw_can.c - HAL_FDCAN_RxFifo0Callback()
+|Objective |Verify that several frames waiting in the FIFO are all read in one interrupt, in order.
+|Preconditions |Filter 0 registered.
+|Test Steps |Queue 3 frames; raise the interrupt once. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Callback called 3 times in FIFO order; FIFO empty afterwards. +
+`s_results[]` entry `UT-MWCAN-RX-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-003]]
+===== UT-MWCAN-RX-003 - Interrupt work bounded to 16 frames
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-003
+|Design reference |mw_can.c - MW_CAN_RX_FIFO0_DEPTH
+|Objective |Verify that one interrupt reads at most 16 frames and the rest are read by the next interrupt.
+|Preconditions |Filter 0 registered.
+|Test Steps |Queue 20 frames; raise the interrupt twice. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |16 frames after the first interrupt (4 left in the FIFO); 20 after the second. +
+`s_results[]` entry `UT-MWCAN-RX-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-004]]
+===== UT-MWCAN-RX-004 - Unknown filter index skipped, monitor still sees the frame
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-004
+|Design reference |mw_can.c - HAL_FDCAN_RxFifo0Callback()
+|Objective |Verify that frames with an out-of-range filter index or an unused slot are dropped safely while later frames are still delivered and logged.
+|Preconditions |Monitor installed; filter 0 registered.
+|Test Steps |Queue frames with FilterIndex 16, 5 (no callback) and 0; raise the interrupt. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Callback called once (0x181); monitor called 3 times. +
+`s_results[]` entry `UT-MWCAN-RX-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-005]]
+===== UT-MWCAN-RX-005 - No read without the new-message flag
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-005
+|Design reference |mw_can.c - HAL_FDCAN_RxFifo0Callback()
+|Objective |Verify that the callback ignores RX FIFO0 interrupts other than new-message.
+|Preconditions |One frame queued.
+|Test Steps |Call the RX callback with interrupt flags 0. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |`HAL_FDCAN_GetRxMessage()` not called; no callback. +
+`s_results[]` entry `UT-MWCAN-RX-005` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-006]]
+===== UT-MWCAN-RX-006 - HAL read error ends the drain loop
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-006
+|Design reference |mw_can.c - HAL_FDCAN_RxFifo0Callback()
+|Objective |Verify that a failing FIFO read stops the loop instead of retrying forever.
+|Preconditions |One frame queued; fake `HAL_FDCAN_GetRxMessage()` returns HAL_ERROR.
+|Test Steps |Raise the interrupt. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |`HAL_FDCAN_GetRxMessage()` called once; no callback; the function returns. +
+`s_results[]` entry `UT-MWCAN-RX-006` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-007]]
+===== UT-MWCAN-RX-007 - Received frames reported to the monitor as RX
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-007
+|Design reference |mw_can.h - MW_CAN_SetMonitor()
+|Objective |Verify that received standard and extended frames are passed to the monitor with is_tx = false and the extended flag.
+|Preconditions |Monitor installed; filter 0 registered.
+|Test Steps |Queue 0x181 (standard) and 0x1ABCDEF (extended, DLC 3); raise the interrupt. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Monitor called twice with is_tx = false; second frame extended, ID 0x1ABCDEF, DLC 3. +
+`s_results[]` entry `UT-MWCAN-RX-007` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-RX-008]]
+===== UT-MWCAN-RX-008 - Received DLC 8 and 0 kept (DLC regression)
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-RX-008
+|Design reference |mw_can.c - Can_FdcanCodeToDlcBytes()
+|Objective |Verify the HAL DataLength to byte-count conversion (the earlier shift-by-16 defect turned every DLC into 0).
+|Preconditions |Filter 0 registered.
+|Test Steps |Queue frames with FDCAN_DLC_BYTES_8 and FDCAN_DLC_BYTES_0; raise the interrupt. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Callback frames have DLC 8 and DLC 0. +
+`s_results[]` entry `UT-MWCAN-RX-008` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Diagnostics and Monitor
+
+[[UT-MWCAN-ERR-001]]
+===== UT-MWCAN-ERR-001 - Bus-off events counted
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-ERR-001
+|Design reference |mw_can.h - MW_CAN_GetBusOffCount()
+|Objective |Verify that only error-status interrupts with the bus-off flag increment the counter.
+|Preconditions |Fresh `MW_CAN_Init()`.
+|Test Steps |Call the error-status callback with BUS_OFF, with another flag, and with BUS_OFF plus another flag. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Bus-off count is 2. +
+`s_results[]` entry `UT-MWCAN-ERR-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-ERR-002]]
+===== UT-MWCAN-ERR-002 - Raw error status read and cleared
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-ERR-002
+|Design reference |mw_can.h - MW_CAN_GetRawErrorStatus(), MW_CAN_ClearErrorStatus()
+|Objective |Verify read-back of the FDCAN IR register and the write-1-to-clear access.
+|Preconditions |IR = 0x02000001.
+|Test Steps |Read the status; clear with mask 0x02000000. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Read returns 0x02000001; the mask value is written to IR. +
+`s_results[]` entry `UT-MWCAN-ERR-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-MON-001]]
+===== UT-MWCAN-MON-001 - Monitor survives Init and can be removed
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-MON-001
+|Design reference |mw_can.h - MW_CAN_SetMonitor()
+|Objective |Verify that the monitor stays installed across `MW_CAN_Init()` and that NULL removes it.
+|Preconditions |Monitor installed.
+|Test Steps |Call `MW_CAN_Init()`, transmit; set the monitor to NULL, transmit. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Monitor called for the first transmit only. +
+`s_results[]` entry `UT-MWCAN-MON-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWCAN-IF-001]]
+===== UT-MWCAN-IF-001 - MW_CAN_If wired to the module functions
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWCAN-IF-001
+|Design reference |mw_can.h - MW_CAN_If
+|Objective |Verify the PIF contract instance.
+|Preconditions |None.
+|Test Steps |Inspect the members of `MW_CAN_If`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |transmit and register_rx_filter are set; start is `MW_CAN_Start`; set_monitor is `MW_CAN_SetMonitor`. +
+`s_results[]` entry `UT-MWCAN-IF-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Module: mw_osif - OS Abstraction
+
+==== Overview
+
+`mw_osif` is the thin OS layer over CMSIS-RTOS2 / FreeRTOS used by `CO_driver.c` and the CANopen tasks: mutexes, critical sections, the millisecond tick, fixed-rate delays, a nestable interrupt lock and a memory barrier. It provides the `time_if.h` and `irq_if.h` contracts (`MW_OSIF_TimeIf`, `MW_OSIF_IrqIf`). The test replaces CMSIS-RTOS2, the FreeRTOS critical section macros, `HAL_GetTick()` and the Cortex-M intrinsics with recording fakes.
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app_middleware/os/mw_osif.c`
+|Test program |`CM7/test/host_unit/src/test_mw_osif.c`
+|Result |11 run, 11 passed, 0 failed
+|===
+
+==== Mutex
+
+[[UT-MWOSIF-MTX-001]]
+===== UT-MWOSIF-MTX-001 - Mutex created
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-MTX-001
+|Design reference |mw_osif.h - MW_OSIF_MutexCreate()
+|Objective |Verify that a created mutex handle is returned.
+|Preconditions |Fake `osMutexNew()` succeeds.
+|Test Steps |Call `MW_OSIF_MutexCreate()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true; the handle is the one returned by `osMutexNew()`. +
+`s_results[]` entry `UT-MWOSIF-MTX-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-MTX-002]]
+===== UT-MWOSIF-MTX-002 - Mutex creation failure reported
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-MTX-002
+|Design reference |mw_osif.h - MW_OSIF_MutexCreate()
+|Objective |Verify that an RTOS creation failure is reported.
+|Preconditions |Fake `osMutexNew()` returns NULL.
+|Test Steps |Call `MW_OSIF_MutexCreate()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false; handle NULL. +
+`s_results[]` entry `UT-MWOSIF-MTX-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-MTX-003]]
+===== UT-MWOSIF-MTX-003 - Lock passes the timeout and reports a timeout
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-MTX-003
+|Design reference |mw_osif.h - MW_OSIF_MutexLock()
+|Objective |Verify that the timeout (including wait-forever) reaches `osMutexAcquire()` and that a timeout returns false.
+|Preconditions |Mutex handle available.
+|Test Steps |Lock with 25 ms and with MW_OSIF_WAIT_FOREVER (acquire OK), then with acquire returning osErrorTimeout. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |True, true, false; the timeouts seen by the RTOS are 25 and osWaitForever; the handle is passed through. +
+`s_results[]` entry `UT-MWOSIF-MTX-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-MTX-004]]
+===== UT-MWOSIF-MTX-004 - Unlock result reported
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-MTX-004
+|Design reference |mw_osif.h - MW_OSIF_MutexUnlock()
+|Objective |Verify that the release result is reported.
+|Preconditions |Mutex handle available.
+|Test Steps |Unlock with release OK, then with osErrorResource. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |True, then false. +
+`s_results[]` entry `UT-MWOSIF-MTX-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Critical Section and Time
+
+[[UT-MWOSIF-CRIT-001]]
+===== UT-MWOSIF-CRIT-001 - Critical section maps to FreeRTOS
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-CRIT-001
+|Design reference |mw_osif.h - MW_OSIF_EnterCritical(), MW_OSIF_ExitCritical()
+|Objective |Verify that enter/exit call the FreeRTOS critical section macros once each.
+|Preconditions |Counters cleared.
+|Test Steps |Enter, then exit. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |One enter after the first call; one enter and one exit after the second. +
+`s_results[]` entry `UT-MWOSIF-CRIT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-TIME-001]]
+===== UT-MWOSIF-TIME-001 - Tick in ms from the HAL tick
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-TIME-001
+|Design reference |time_if.h - PIF_TIME_GetMsFn
+|Objective |Verify that the tick is the HAL tick, also at the wrap value.
+|Preconditions |HAL tick 123456, then 0xFFFFFFFF.
+|Test Steps |Call `MW_OSIF_GetTickMs()` and `MW_OSIF_TimeIf.get_ms()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns 123456 (both functions), then 0xFFFFFFFF. +
+`s_results[]` entry `UT-MWOSIF-TIME-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-TIME-002]]
+===== UT-MWOSIF-TIME-002 - Fixed-rate delay has no drift
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-TIME-002
+|Design reference |mw_osif.h - MW_OSIF_DelayUntil()
+|Objective |Verify that the wake time advances by exactly one period per call.
+|Preconditions |last_wake = 1000.
+|Test Steps |Call `MW_OSIF_DelayUntil(&last_wake, 10)` 100 times. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |last_wake = 2000; the last `osDelayUntil()` argument is 2000; 100 calls. +
+`s_results[]` entry `UT-MWOSIF-TIME-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-TIME-003]]
+===== UT-MWOSIF-TIME-003 - Delay passes the time to the RTOS
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-TIME-003
+|Design reference |time_if.h - PIF_TIME_DelayMsFn
+|Objective |Verify that the delay reaches `osDelay()`.
+|Preconditions |None.
+|Test Steps |Call `MW_OSIF_DelayMs(200)` and `MW_OSIF_TimeIf.delay_ms(20)`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |`osDelay()` receives 200, then 20. +
+`s_results[]` entry `UT-MWOSIF-TIME-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Interrupt Lock and Interface
+
+[[UT-MWOSIF-IRQ-001]]
+===== UT-MWOSIF-IRQ-001 - Interrupt lock returns previous state and nests
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-IRQ-001
+|Design reference |irq_if.h - PIF_IRQ_LockFn, PIF_IRQ_UnlockFn
+|Objective |Verify that the lock masks interrupts, returns the previous PRIMASK and that nested unlocks restore correctly.
+|Preconditions |PRIMASK = 0.
+|Test Steps |Lock, lock, unlock(inner), unlock(outer). +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Outer lock returns 0, inner returns 1; still masked after the inner unlock; unmasked after the outer unlock. +
+`s_results[]` entry `UT-MWOSIF-IRQ-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-IRQ-002]]
+===== UT-MWOSIF-IRQ-002 - Memory barrier issues DMB
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-IRQ-002
+|Design reference |irq_if.h - PIF_IRQ_MemoryBarrierFn
+|Objective |Verify that the barrier executes a DMB.
+|Preconditions |Counter cleared.
+|Test Steps |Call `MW_OSIF_MemoryBarrier()` and `MW_OSIF_IrqIf.memory_barrier()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Two DMB executions. +
+`s_results[]` entry `UT-MWOSIF-IRQ-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWOSIF-IF-001]]
+===== UT-MWOSIF-IF-001 - TimeIf and IrqIf wired to the module
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWOSIF-IF-001
+|Design reference |mw_osif.h - MW_OSIF_TimeIf, MW_OSIF_IrqIf
+|Objective |Verify the PIF contract instances.
+|Preconditions |None.
+|Test Steps |Inspect the members. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Every member points to the matching MW_OSIF_ function. +
+`s_results[]` entry `UT-MWOSIF-IF-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Module: mw_sd and mw_usb - SD Card and USB Host Middleware
+
+==== Overview
+
+`mw_sd` fulfils `sd_if.h`: card detect (PE3), card start through `BSP_SD_Init()` with the board-specific SDMMC1 settings (4-bit bus, 5 MHz, no 1.8 V transceiver) and stop. `mw_usb` fulfils `usb_if.h`: stick ready (`Appli_state`) and stick connected (`hUsbHostHS.device.is_connected`). The test replaces the HAL SD driver, the FatFs SD BSP and the USB host state with fakes.
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app_middleware/sd/mw_sd.c, CM7/app_middleware/usb/mw_usb.c`
+|Test program |`CM7/test/host_unit/src/test_mw_sd_usb.c`
+|Result |10 run, 10 passed, 0 failed
+|===
+
+==== mw_sd
+
+[[UT-MWSD-DET-001]]
+===== UT-MWSD-DET-001 - Card detect follows the BSP detect pin
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-DET-001
+|Design reference |sd_if.h - PIF_SD_IsDetectedFn
+|Objective |Verify the detect result for card present and absent.
+|Preconditions |None.
+|Test Steps |BSP detect returns SD_PRESENT, then SD_NOT_PRESENT. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |True (also through `MW_SD_If`), then false. +
+`s_results[]` entry `UT-MWSD-DET-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWSD-START-001]]
+===== UT-MWSD-START-001 - Card started with the board settings
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-START-001
+|Design reference |mw_sd.h - MW_SD_Start()
+|Objective |Verify the SDMMC1 settings in place when `BSP_SD_Init()` runs and the card details returned.
+|Preconditions |Fake card: SDHC, 15523840 blocks of 512 bytes.
+|Test Steps |Call `MW_SD_Start(&info)`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true; at BSP init: Instance SDMMC1, rising edge, no power save, 4-bit bus, no hardware flow control, ClockDiv 4. info: type 1, 7580 MB, error 0. No DeInit. +
+`s_results[]` entry `UT-MWSD-START-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWSD-START-002]]
+===== UT-MWSD-START-002 - Capacity above 4 GB computed without overflow
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-START-002
+|Design reference |mw_sd.h - MW_SD_Start()
+|Objective |Verify the 64-bit capacity calculation.
+|Preconditions |Fake 64 GB card: 122142720 blocks of 512 bytes.
+|Test Steps |Call `MW_SD_If.start(&info)`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns true; capacity 59640 MB. +
+`s_results[]` entry `UT-MWSD-START-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWSD-START-003]]
+===== UT-MWSD-START-003 - Start failure returns the HAL error and stops the card
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-START-003
+|Design reference |mw_sd.h - MW_SD_Start()
+|Objective |Verify the failure path of the BSP start.
+|Preconditions |Fake `BSP_SD_Init()` returns MSD_ERROR with ErrorCode 0x4.
+|Test Steps |Call `MW_SD_Start(&info)`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false; info.error_code 0x4; type and capacity 0; `HAL_SD_DeInit(&hsd1)` called once. +
+`s_results[]` entry `UT-MWSD-START-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWSD-START-004]]
+===== UT-MWSD-START-004 - Card info failure stops the card
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-START-004
+|Design reference |mw_sd.h - MW_SD_Start()
+|Objective |Verify the failure path of `HAL_SD_GetCardInfo()`.
+|Preconditions |Fake `HAL_SD_GetCardInfo()` returns HAL_ERROR.
+|Test Steps |Call `MW_SD_Start(&info)`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Returns false; DeInit called once; capacity 0. +
+`s_results[]` entry `UT-MWSD-START-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWSD-STOP-001]]
+===== UT-MWSD-STOP-001 - Stop de-initialises the SDMMC
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-STOP-001
+|Design reference |sd_if.h - PIF_SD_StopFn
+|Objective |Verify that stop calls `HAL_SD_DeInit()` on hsd1.
+|Preconditions |None.
+|Test Steps |Call `MW_SD_Stop()` and `MW_SD_If.stop()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Two DeInit calls on hsd1. +
+`s_results[]` entry `UT-MWSD-STOP-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWSD-IF-001]]
+===== UT-MWSD-IF-001 - MW_SD_If wired to the module
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWSD-IF-001
+|Design reference |mw_sd.h - MW_SD_If
+|Objective |Verify the PIF contract instance.
+|Preconditions |None.
+|Test Steps |Inspect the members. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |is_detected, start and stop point to the MW_SD_ functions. +
+`s_results[]` entry `UT-MWSD-IF-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== mw_usb
+
+[[UT-MWUSB-RDY-001]]
+===== UT-MWUSB-RDY-001 - Ready only in APPLICATION_READY
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWUSB-RDY-001
+|Design reference |usb_if.h - PIF_USB_IsReadyFn
+|Objective |Verify the ready state for every USB host application state.
+|Preconditions |None.
+|Test Steps |Set Appli_state to IDLE, START, READY, DISCONNECT. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |False, false, true (also through `MW_USB_If`), false. +
+`s_results[]` entry `UT-MWUSB-RDY-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWUSB-CON-001]]
+===== UT-MWUSB-CON-001 - Connected follows the host connect flag
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWUSB-CON-001
+|Design reference |usb_if.h - PIF_USB_IsConnectedFn
+|Objective |Verify that removal is seen from the connect flag even while Appli_state still says READY.
+|Preconditions |Appli_state READY.
+|Test Steps |is_connected = 1, then 0. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Connected true, then false, while ready stays true. +
+`s_results[]` entry `UT-MWUSB-CON-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-MWUSB-IF-001]]
+===== UT-MWUSB-IF-001 - MW_USB_If wired to the module
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-MWUSB-IF-001
+|Design reference |mw_usb.h - MW_USB_If
+|Objective |Verify the PIF contract instance.
+|Preconditions |None.
+|Test Steps |Inspect the members. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |is_ready and is_connected point to the MW_USB_ functions. +
+`s_results[]` entry `UT-MWUSB-IF-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Module: can_log - SD Card CAN Logger
+
+==== Overview
+
+`can_log` copies every RX/TX frame into a 1024-entry RAM queue from the CAN interrupt (monitor callback) and, in the SD task, writes them as CSV lines with a chained CRC-16 to IDLE files and session files. A session file opens when Node 0x04 leaves IDLE (TPDO1 0x181, byte 0) and ends with an END line when it returns to IDLE; a power cut mid-session continues as `_PART<n>`. The test uses fake platform services and an in-memory FatFs with fault injection. The end-to-end file scenarios remain in TC-HST-001..006 (TS-DISP-002).
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app/sdcard/can_log.c`
+|Test program |`CM7/test/host_unit/src/test_can_log.c`
+|Result |26 run, 26 passed, 0 failed
+|===
+
+==== Frame Queue
+
+[[UT-CANLOG-INIT-001]]
+===== UT-CANLOG-INIT-001 - Init installs the frame monitor
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-INIT-001
+|Design reference |can_log.h - APP_CanLog_Init()
+|Objective |Verify that the logger registers `APP_CanLog_OnFrame` through the injected set_monitor service.
+|Preconditions |Monitor cleared.
+|Test Steps |Call `APP_CanLog_Init(&config)`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |set_monitor received `APP_CanLog_OnFrame`. +
+`s_results[]` entry `UT-CANLOG-INIT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-QUEUE-001]]
+===== UT-CANLOG-QUEUE-001 - Queue entry published under lock after a barrier
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-QUEUE-001
+|Design reference |can_log.h - APP_CanLog_OnFrame()
+|Objective |Verify that one interrupt lock/unlock pair is used, the saved state is restored and the barrier runs before the unlock.
+|Preconditions |Counters cleared.
+|Test Steps |Queue one frame. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |One lock, one unlock with the saved state 0x5A, at least one barrier before the unlock. +
+`s_results[]` entry `UT-CANLOG-QUEUE-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-QUEUE-002]]
+===== UT-CANLOG-QUEUE-002 - Overflow counted and DROPPED line written at the gap
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-QUEUE-002
+|Design reference |can_log.h - CANLOG_dropped_count
+|Objective |Verify the queue capacity (1023), the loss count and the DROPPED line placed before the first frame after the loss, with a valid CRC chain.
+|Preconditions |Card ready, IDLE file open.
+|Test Steps |Queue 1100 frames without processing; process; queue one more frame; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |77 frames counted lost; queue peak 1023. Line 1025 is `...,DROPPED,,,77 messages lost,...`, line 1026 is the next frame (0x301); 1026 lines; CRC chain valid. +
+`s_results[]` entry `UT-CANLOG-QUEUE-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-QUEUE-003]]
+===== UT-CANLOG-QUEUE-003 - DLC above 8 clamped to 8
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-QUEUE-003
+|Design reference |can_log.h - APP_CanLog_OnFrame()
+|Objective |Verify that an invalid DLC never reads beyond the 8 data bytes.
+|Preconditions |IDLE file open.
+|Test Steps |Queue a frame with DLC 12; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Line shows `RX,0x123,8,22 22 22 22 22 22 22 22`. +
+`s_results[]` entry `UT-CANLOG-QUEUE-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-QUEUE-004]]
+===== UT-CANLOG-QUEUE-004 - Without a card the queue is emptied without writing
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-QUEUE-004
+|Design reference |can_log.h - APP_CanLog_Process()
+|Objective |Verify that frames are discarded, not written, when no usable card is present.
+|Preconditions |No card ready.
+|Test Steps |Queue 50 frames; process with card_ok = false. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |No write calls; no files. +
+`s_results[]` entry `UT-CANLOG-QUEUE-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== IDLE File
+
+[[UT-CANLOG-IDLE-001]]
+===== UT-CANLOG-IDLE-001 - Card ready opens SESSION_0000_IDLE_1.CSV
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-IDLE-001
+|Design reference |can_log.h - APP_CanLog_CardReady()
+|Objective |Verify the first IDLE file name, its header and the open-file name.
+|Preconditions |Empty card.
+|Test Steps |Call `APP_CanLog_CardReady()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |File exists with only the header `line,time_ms,dir,id,dlc,data,crc`; CANLOG_is_file_open true; open name `SESSION_0000_IDLE_1.CSV`. +
+`s_results[]` entry `UT-CANLOG-IDLE-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-IDLE-002]]
+===== UT-CANLOG-IDLE-002 - IDLE number continues after the newest session
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-IDLE-002
+|Design reference |can_log.c - CanLog_NextIdleNumber()
+|Objective |Verify that the IDLE file takes the newest session number and the next free IDLE number for that session.
+|Preconditions |Card holds SESSION_0003_CANLOG, SESSION_0003_IDLE_1, SESSION_0002_IDLE_7.
+|Test Steps |Call `APP_CanLog_CardReady()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |`SESSION_0003_IDLE_2.CSV` created. +
+`s_results[]` entry `UT-CANLOG-IDLE-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-IDLE-003]]
+===== UT-CANLOG-IDLE-003 - Node 0x04 in IDLE logs to the IDLE file only
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-IDLE-003
+|Design reference |can_log.c - CanLog_WaitForSession()
+|Objective |Verify that frames while Node 0x04 reports IDLE go to the IDLE file and no session file opens.
+|Preconditions |IDLE file open; time 1234 ms.
+|Test Steps |Queue 0x181 with state 0 and 0x710; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Line 2 starts `1,1234,RX,0x181,8,00 00 00 00 00 00 00 00,`; no SESSION_0001_CANLOG.CSV; CANLOG_workflow_state 0. +
+`s_results[]` entry `UT-CANLOG-IDLE-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Session Files
+
+[[UT-CANLOG-SESS-001]]
+===== UT-CANLOG-SESS-001 - Leaving IDLE opens a session file with pre-roll
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-001
+|Design reference |can_log.c - CanLog_OpenSession()
+|Objective |Verify the session file name, the pre-roll frames and the starting 0x181 frame.
+|Preconditions |IDLE file open.
+|Test Steps |Queue 0x181 state 0, 0x710, 0x704, then 0x181 state 1; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |SESSION_0001_CANLOG.CSV; session 1, part 1; workflow state 1; header + 3 pre-roll lines + the 0x181 state-1 line; CRC chain valid. +
+`s_results[]` entry `UT-CANLOG-SESS-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SESS-002]]
+===== UT-CANLOG-SESS-002 - Return to IDLE writes END and opens the next IDLE file
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-002
+|Design reference |can_log.c - CanLog_EndSession()
+|Objective |Verify the END line content and that a new IDLE file follows the session.
+|Preconditions |IDLE file open.
+|Test Steps |Queue 0x181 states 0, 1, a 0x281 frame, then state 0; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Session file has 6 lines; the last is `5,1000,END,,,lines=4 dropped=0 session=1 part=1,<crc>`; CRC chain valid; SESSION_0001_IDLE_1.CSV open. +
+`s_results[]` entry `UT-CANLOG-SESS-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SESS-003]]
+===== UT-CANLOG-SESS-003 - Power-on mid-session continues as _PART2
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-003
+|Design reference |can_log.c - CanLog_HasEndLine()
+|Objective |Verify that an unfinished newest session (no END line) continues as its next part.
+|Preconditions |Card holds SESSION_0002_CANLOG.CSV without END line.
+|Test Steps |Card ready; first 0x181 has state 3; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |SESSION_0002_CANLOG_PART2.CSV open; session 2, part 2. +
+`s_results[]` entry `UT-CANLOG-SESS-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SESS-004]]
+===== UT-CANLOG-SESS-004 - Finished session not continued
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-004
+|Design reference |can_log.c - CanLog_OpenSession()
+|Objective |Verify that a newest session ending with END starts a new session number.
+|Preconditions |Card holds SESSION_0002_CANLOG.CSV ending with an END line.
+|Test Steps |Card ready; first 0x181 has state 3; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |SESSION_0003_CANLOG.CSV created; no PART2. +
+`s_results[]` entry `UT-CANLOG-SESS-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SESS-005]]
+===== UT-CANLOG-SESS-005 - IDLE seen first starts a new session
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-005
+|Design reference |can_log.c - CanLog_WaitForSession()
+|Objective |Verify that after Node 0x04 was seen in IDLE an unfinished old session is not continued.
+|Preconditions |Card holds SESSION_0002_CANLOG.CSV without END line.
+|Test Steps |Card ready; 0x181 state 0, then state 1; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |SESSION_0003_CANLOG.CSV created; no PART2. +
+`s_results[]` entry `UT-CANLOG-SESS-005` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SESS-006]]
+===== UT-CANLOG-SESS-006 - Pre-roll limited to the last 64 frames
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-006
+|Design reference |can_log.c - CANLOG_PREROLL_LEN
+|Objective |Verify that only the last 64 idle frames are copied into the session file.
+|Preconditions |IDLE file open.
+|Test Steps |Queue 0x181 state 0 and 100 frames at 2000..2099 ms, then state 2; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |66 lines (header + 64 pre-roll + trigger); the first data line is the frame at 2036 ms. +
+`s_results[]` entry `UT-CANLOG-SESS-006` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SESS-007]]
+===== UT-CANLOG-SESS-007 - No card: no session file
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SESS-007
+|Design reference |can_log.c - CanLog_WaitForSession()
+|Objective |Verify that leaving IDLE without a usable card opens nothing.
+|Preconditions |No card ready.
+|Test Steps |Queue 0x181 states 0 and 1; process with card_ok = false. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |No files; CANLOG_is_file_open false. +
+`s_results[]` entry `UT-CANLOG-SESS-007` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Line Format
+
+[[UT-CANLOG-LINE-001]]
+===== UT-CANLOG-LINE-001 - RX line text and CRC-16/CCITT-FALSE
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-LINE-001
+|Design reference |can_log.h - file format
+|Objective |Verify the exact CSV line and its CRC against an independent CRC-16/CCITT-FALSE implementation (itself checked against 0x29B1 for "123456789").
+|Preconditions |IDLE file open; time 4321 ms.
+|Test Steps |Queue 0x5AB, DLC 3, data 0A 0B 0C; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Line 2 equals `1,4321,RX,0x5AB,3,0A 0B 0C,<CRC>` with CRC = CRC16(0xFFFF, line text). +
+`s_results[]` entry `UT-CANLOG-LINE-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-LINE-002]]
+===== UT-CANLOG-LINE-002 - TX direction, extended ID and empty data field
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-LINE-002
+|Design reference |can_log.h - file format
+|Objective |Verify the TX direction, the 8-digit extended ID and an empty data field for DLC 0.
+|Preconditions |IDLE file open.
+|Test Steps |Report a TX frame 0x18FF1234, extended, DLC 0; process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Line starts `1,1000,TX,0x18FF1234,0,,`. +
+`s_results[]` entry `UT-CANLOG-LINE-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-LINE-003]]
+===== UT-CANLOG-LINE-003 - CRC chained over 200 mixed lines
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-LINE-003
+|Design reference |can_log.c - CanLog_AddLine()
+|Objective |Verify the CRC chain and line count over many lines with DLC 0..8.
+|Preconditions |IDLE file open.
+|Test Steps |Queue 200 frames (IDs 0x190..0x197, DLC 0..8); process and save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |201 lines; every CRC field matches the chained reference CRC; CANLOG_line_count 200. +
+`s_results[]` entry `UT-CANLOG-LINE-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Saving
+
+[[UT-CANLOG-SAVE-001]]
+===== UT-CANLOG-SAVE-001 - File saved every 2 s
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SAVE-001
+|Design reference |can_log.c - CANLOG_SYNC_PERIOD_MS
+|Objective |Verify that lines stay in the 4 KB block until the 2 s save and are on the card after it.
+|Preconditions |IDLE file opened (and saved) at 1000 ms.
+|Test Steps |Queue a frame; process at 2999 ms, then at 3000 ms. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |No sync and only the header on the card at 2999 ms; one sync and 2 lines at 3000 ms. +
+`s_results[]` entry `UT-CANLOG-SAVE-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-SAVE-002]]
+===== UT-CANLOG-SAVE-002 - Full 4 KB block written at once
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-SAVE-002
+|Design reference |can_log.c - CANLOG_BLOCK_SIZE
+|Objective |Verify that the block is written when it fills, before the save period.
+|Preconditions |IDLE file open.
+|Test Steps |Queue 100 frames of about 70 characters; process once. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Exactly one write call. +
+`s_results[]` entry `UT-CANLOG-SAVE-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Errors and Removal
+
+[[UT-CANLOG-FAIL-001]]
+===== UT-CANLOG-FAIL-001 - Write error stops logging until the next insert
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-FAIL-001
+|Design reference |can_log.h - CANLOG_fs_error
+|Objective |Verify that a write error stops logging, closes the file, blocks new sessions, and that the next card insert resumes.
+|Preconditions |IDLE file open; writes fail with FR_DISK_ERR.
+|Test Steps |Queue a frame and save; queue 0x181 states 0 and 1; then clear the fault and call card ready. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |fs_error FR_DISK_ERR; file closed; no session file; after card ready fs_error 0 and a file is open. +
+`s_results[]` entry `UT-CANLOG-FAIL-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-FAIL-002]]
+===== UT-CANLOG-FAIL-002 - Card full reported as FR_DENIED
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-FAIL-002
+|Design reference |can_log.c - CanLog_WriteBlock()
+|Objective |Verify that a short write (card full) stops logging with FR_DENIED.
+|Preconditions |IDLE file open; 1000 bytes free.
+|Test Steps |Queue 100 frames; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |fs_error FR_DENIED; file closed. +
+`s_results[]` entry `UT-CANLOG-FAIL-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-FAIL-003]]
+===== UT-CANLOG-FAIL-003 - File open error reported
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-FAIL-003
+|Design reference |can_log.c - CanLog_OpenIdle()
+|Objective |Verify that a failing open is reported and leaves no file.
+|Preconditions |Every open fails with FR_DENIED.
+|Test Steps |Call card ready. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |fs_error FR_DENIED; no file open; no files. +
+`s_results[]` entry `UT-CANLOG-FAIL-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-FAIL-004]]
+===== UT-CANLOG-FAIL-004 - Save (sync) error stops logging
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-FAIL-004
+|Design reference |can_log.c - CanLog_Save()
+|Objective |Verify that a failing f_sync of a session file stops logging.
+|Preconditions |Session file open; next sync fails with FR_DISK_ERR.
+|Test Steps |Queue a frame; save. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |fs_error FR_DISK_ERR; file closed. +
+`s_results[]` entry `UT-CANLOG-FAIL-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-REM-001]]
+===== UT-CANLOG-REM-001 - Card removed: no open file
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-REM-001
+|Design reference |can_log.h - APP_CanLog_CardRemoved()
+|Objective |Verify the state after card removal.
+|Preconditions |IDLE file open.
+|Test Steps |Call `APP_CanLog_CardRemoved()`; ask for the open file name. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CANLOG_is_file_open false; name query returns false with an empty name. +
+`s_results[]` entry `UT-CANLOG-REM-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CANLOG-NAME-001]]
+===== UT-CANLOG-NAME-001 - Open file name: argument checks and truncation
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CANLOG-NAME-001
+|Design reference |can_log.h - APP_CanLog_GetOpenFileName()
+|Objective |Verify NULL/zero-size handling and that the name is truncated and terminated.
+|Preconditions |IDLE file open.
+|Test Steps |Call with NULL, with size 0, with an 8-byte buffer. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |False, false, true with `SESSION` (7 characters + NUL). +
+`s_results[]` entry `UT-CANLOG-NAME-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Module: sd_card - SD Task
+
+==== Overview
+
+`sd_card` runs the SD task: every 20 ms it runs the CAN logger and then the USB copy; every 500 ms (25 cycles) it checks the card slot. On insert it waits 200 ms, starts the card, mounts FAT32, reads the free space and arms the logger; on removal it stops the logger, unmounts and stops the card. The test drives the never-returning task through scripted cycles (the fake 20 ms delay leaves it with longjmp), with fake platform services, an in-memory FatFs and spies for the logger and the USB copy that record the call order.
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app/sdcard/sd_card.c`
+|Test program |`CM7/test/host_unit/src/test_sd_card.c`
+|Result |13 run, 13 passed, 0 failed
+|===
+
+==== Card Detect and Start
+
+[[UT-SDCARD-DET-001]]
+===== UT-SDCARD-DET-001 - Card present at start-up is started and mounted
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-DET-001
+|Design reference |sd_card.h - APP_SdCard_Task()
+|Objective |Verify the first cycle with a card in the slot: settle, start, mount, arm logging.
+|Preconditions |Card present; start returns SDHC 7580 MB.
+|Test Steps |Run 1 cycle. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State READY; init count +1; type 1, 7580 MB, 4096 MB free; drive 0 mounted; call order `D200 START READY P1 U D20`. +
+`s_results[]` entry `UT-SDCARD-DET-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-DET-002]]
+===== UT-SDCARD-DET-002 - Slot checked every 25 cycles
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-DET-002
+|Design reference |sd_card.c - SDCARD_DETECT_EVERY_CYCLES
+|Objective |Verify that a card inserted at cycle 3 is only seen at the next detect check.
+|Preconditions |No card.
+|Test Steps |Card in from cycle 3; run 25 cycles; run 1 more cycle. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Not started after 25 cycles; started and READY on the following detect check. +
+`s_results[]` entry `UT-SDCARD-DET-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-DET-003]]
+===== UT-SDCARD-DET-003 - Card that stays in is started once
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-DET-003
+|Design reference |sd_card.h - APP_SdCard_Task()
+|Objective |Verify that repeated detect checks with the card still in do not restart it.
+|Preconditions |No card.
+|Test Steps |Card in for 30 cycles (two detect checks). +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |One start, one logger arm. +
+`s_results[]` entry `UT-SDCARD-DET-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-START-001]]
+===== UT-SDCARD-START-001 - Start failure reported, card not used
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-START-001
+|Design reference |sd_card.h - APP_SDCARD_STATE_INIT_FAILED
+|Objective |Verify the start failure path.
+|Preconditions |Start fails with error 0x4.
+|Test Steps |Run 1 cycle with a card in. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State INIT_FAILED; hal_error 0x4; no mount; logger not armed; logger called with card_ok = false. +
+`s_results[]` entry `UT-SDCARD-START-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-MOUNT-001]]
+===== UT-SDCARD-MOUNT-001 - Mount failure reported, card stopped
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-MOUNT-001
+|Design reference |sd_card.h - APP_SDCARD_STATE_MOUNT_FAILED
+|Objective |Verify the mount failure path.
+|Preconditions |f_mount fails with FR_NO_FILESYSTEM.
+|Test Steps |Run 1 cycle with a card in. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State MOUNT_FAILED; fs_error FR_NO_FILESYSTEM; card stopped once; logger not armed; not ready. +
+`s_results[]` entry `UT-SDCARD-MOUNT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-MOUNT-002]]
+===== UT-SDCARD-MOUNT-002 - Free-space read failure does not block the card
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-MOUNT-002
+|Design reference |sd_card.c - SdCard_Start()
+|Objective |Verify that a failing f_getfree still leaves the card usable.
+|Preconditions |f_getfree fails with FR_DISK_ERR.
+|Test Steps |Run 1 cycle with a card in. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State READY; fs_error 0; logger armed. +
+`s_results[]` entry `UT-SDCARD-MOUNT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Card Removal
+
+[[UT-SDCARD-REM-001]]
+===== UT-SDCARD-REM-001 - Removal stops logging, unmounts and stops the card
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-REM-001
+|Design reference |sd_card.c - SdCard_Stop()
+|Objective |Verify the removal sequence and that card details are cleared.
+|Preconditions |Card mounted.
+|Test Steps |Run 1 cycle with the card out. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Detect changes +1; state NO_CARD; type, capacity and free space 0; drive 0 unmounted; one stop; call order `REMOVED STOP P0 U D20`. +
+`s_results[]` entry `UT-SDCARD-REM-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-REM-002]]
+===== UT-SDCARD-REM-002 - Re-insert starts the card again
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-REM-002
+|Design reference |sd_card.h - APP_SdCard_Task()
+|Objective |Verify insert, remove, insert.
+|Preconditions |No card.
+|Test Steps |Run 1 cycle each: in, out, in. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State READY; init count +2; two starts. +
+`s_results[]` entry `UT-SDCARD-REM-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-REM-003]]
+===== UT-SDCARD-REM-003 - Removing a card that never mounted is not unmounted
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-REM-003
+|Design reference |sd_card.c - SdCard_Stop()
+|Objective |Verify that removal after a mount failure only stops the card.
+|Preconditions |Card in with mount failure.
+|Test Steps |Run 1 cycle with the card out. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |No f_mount call; one stop; state NO_CARD. +
+`s_results[]` entry `UT-SDCARD-REM-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Per-Cycle Work
+
+[[UT-SDCARD-PROC-001]]
+===== UT-SDCARD-PROC-001 - Logger then USB copy every 20 ms
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-PROC-001
+|Design reference |sd_card.h - APP_SdCard_Task()
+|Objective |Verify the order and period of the per-cycle work.
+|Preconditions |No card.
+|Test Steps |Card in; run 5 cycles. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Call order `D200 START READY` then 5 x `P1 U D20`. +
+`s_results[]` entry `UT-SDCARD-PROC-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-PROC-002]]
+===== UT-SDCARD-PROC-002 - Card pulled between detect checks: card_ok false at once
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-PROC-002
+|Design reference |sd_card.c - APP_SdCard_Task()
+|Objective |Verify that the logger is told immediately when the card leaves the slot, before the next detect check.
+|Preconditions |No card.
+|Test Steps |Card in for cycles 0-1, out from cycle 2; run 4 cycles. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State still READY (no detect check yet); logger calls `P1 P1 P0 P0`. +
+`s_results[]` entry `UT-SDCARD-PROC-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-PROC-003]]
+===== UT-SDCARD-PROC-003 - No card: logger and USB copy still run
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-PROC-003
+|Design reference |sd_card.h - APP_SdCard_Task()
+|Objective |Verify that the queue is still emptied without a card.
+|Preconditions |No card.
+|Test Steps |Run 3 cycles. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Call order 3 x `P0 U D20`. +
+`s_results[]` entry `UT-SDCARD-PROC-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-SDCARD-READY-001]]
+===== UT-SDCARD-READY-001 - IsReady only in READY
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-SDCARD-READY-001
+|Design reference |sd_card.h - APP_SdCard_IsReady()
+|Objective |Verify the ready query for every state.
+|Preconditions |None.
+|Test Steps |Set each SDCARD_state value. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |True for READY only. +
+`s_results[]` entry `UT-SDCARD-READY-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Module: usb_drive - USB Log Copy
+
+==== Overview
+
+`usb_drive` mounts a USB stick after 0.5 s of steady ready state and, while Screen 18 allows it, copies every `*.CSV` in the SD root that the stick does not already have with the same size into `1:/ORGPORT_LOGS/`, except the file being logged. Copying is done in 8 KB chunks with a 40 ms budget per SD task cycle, each file is size-checked after closing, and the copy ends DONE, FAILED, CANCELLED (Cancel button) or ABORTED (stick pulled out). The test uses fake platform services, an in-memory FatFs with fault injection and stubs for the SD card and the logger's open file name.
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app/usb/usb_drive.c`
+|Test program |`CM7/test/host_unit/src/test_usb_drive.c`
+|Result |27 run, 27 passed, 0 failed
+|===
+
+==== Mount and Unmount
+
+[[UT-USBDRV-MNT-001]]
+===== UT-USBDRV-MNT-001 - Stick mounted after 25 ready cycles
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-MNT-001
+|Design reference |usb_drive.c - USBDRIVE_SETTLE_CYCLES
+|Objective |Verify the settle time before mounting and the mount results.
+|Preconditions |No stick.
+|Test Steps |Stick ready and connected; process 24 times, then once more. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Not mounted (no f_mount) after 24; mounted after 25; mount count +1; drive 1 mounted; 4096 MB free; state IDLE. +
+`s_results[]` entry `UT-USBDRV-MNT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-MNT-002]]
+===== UT-USBDRV-MNT-002 - Settle count restarts after a drop-out
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-MNT-002
+|Design reference |usb_drive.h - APP_UsbDrive_Process()
+|Objective |Verify that a ready drop-out restarts the settle time.
+|Preconditions |No stick.
+|Test Steps |Ready 20 cycles, not ready 1, ready 24, then 1 more. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Not mounted after the 24; mounted after the next. +
+`s_results[]` entry `UT-USBDRV-MNT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-MNT-003]]
+===== UT-USBDRV-MNT-003 - Mount failure reported once per insert
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-MNT-003
+|Design reference |usb_drive.c - UsbDrive_Mount()
+|Objective |Verify the mount failure state and that it is not retried while the stick stays in.
+|Preconditions |f_mount fails once with FR_NO_FILESYSTEM.
+|Test Steps |Plug in; process 50 more times. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Not mounted; state FAILED; fs_error FR_NO_FILESYSTEM; one f_mount call. +
+`s_results[]` entry `UT-USBDRV-MNT-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-MNT-004]]
+===== UT-USBDRV-MNT-004 - Removal unmounts the stick
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-MNT-004
+|Design reference |usb_drive.c - UsbDrive_Unmount()
+|Objective |Verify the unmount on removal.
+|Preconditions |Stick mounted.
+|Test Steps |Stick not ready / not connected; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Not mounted; drive 1 unmounted; free space 0; state IDLE. +
+`s_results[]` entry `UT-USBDRV-MNT-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Copy Permission
+
+[[UT-USBDRV-ALLOW-001]]
+===== UT-USBDRV-ALLOW-001 - No copy outside Screen 18
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-ALLOW-001
+|Design reference |usb_drive.h - APP_UsbDrive_SetCopyAllowed()
+|Objective |Verify that a mounted stick waits while the copy is not allowed.
+|Preconditions |One CSV on the SD card; copy not allowed.
+|Test Steps |Plug in; process 50 times. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State IDLE; no folder created; no file on the stick. +
+`s_results[]` entry `UT-USBDRV-ALLOW-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-ALLOW-002]]
+===== UT-USBDRV-ALLOW-002 - Waits for the SD card, then copies
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-ALLOW-002
+|Design reference |usb_drive.h - APP_USBDRIVE_COPY_WAIT_SD
+|Objective |Verify the wait for a mounted SD card.
+|Preconditions |SD card not ready; one CSV.
+|Test Steps |Plug in; allow; process 3; SD ready; process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |WAIT_SD, then DONE with the file identical on the stick. +
+`s_results[]` entry `UT-USBDRV-ALLOW-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-ALLOW-003]]
+===== UT-USBDRV-ALLOW-003 - Leaving Screen 18 while waiting returns to IDLE
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-ALLOW-003
+|Design reference |usb_drive.h - APP_UsbDrive_SetCopyAllowed()
+|Objective |Verify the WAIT_SD to IDLE transition when the copy is no longer allowed.
+|Preconditions |SD card not ready; stick mounted; copy allowed (WAIT_SD).
+|Test Steps |Disallow; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State IDLE. +
+`s_results[]` entry `UT-USBDRV-ALLOW-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Copy
+
+[[UT-USBDRV-COPY-001]]
+===== UT-USBDRV-COPY-001 - All CSV files copied and identical
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-001
+|Design reference |usb_drive.c - UsbDrive_CopySome()
+|Objective |Verify a complete copy of three files.
+|Preconditions |Three CSV files (1000, 2000, 3000 bytes).
+|Test Steps |Plug in; allow; process 5. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE; 3 total, 3 done, 0 failed; 6000 bytes total and done; contents identical; no file left open. +
+`s_results[]` entry `UT-USBDRV-COPY-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-002]]
+===== UT-USBDRV-COPY-002 - Only CSV files that may be copied
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-002
+|Design reference |usb_drive.c - UsbDrive_StartCopy()
+|Objective |Verify the file selection: lower-case .csv accepted; non-CSV, bare `.CSV`, names of 40 characters or more, folders and the file being logged excluded.
+|Preconditions |SD root with the files listed in the objective; open log file SESSION_0002_IDLE_1.CSV.
+|Test Steps |Plug in; allow; process 5. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE with 2 files: SESSION_0001_CANLOG.CSV and lower_case.csv; none of the others on the stick. +
+`s_results[]` entry `UT-USBDRV-COPY-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-003]]
+===== UT-USBDRV-COPY-003 - Same-size files skipped, different size copied again
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-003
+|Design reference |usb_drive.c - UsbDrive_StartCopy()
+|Objective |Verify the already-copied check.
+|Preconditions |Stick holds one file with the same size and one half-copied (2 bytes).
+|Test Steps |Plug in; allow; process 5. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE; 1 skipped, 1 total, 1 done; the half file replaced by an identical copy. +
+`s_results[]` entry `UT-USBDRV-COPY-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-004]]
+===== UT-USBDRV-COPY-004 - Nothing to copy ends DONE at once
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-004
+|Design reference |usb_drive.c - UsbDrive_StartCopy()
+|Objective |Verify the empty copy and the folder creation.
+|Preconditions |No CSV files.
+|Test Steps |Plug in; allow; process once. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE; 0 total; `1:/ORGPORT_LOGS` exists. +
+`s_results[]` entry `UT-USBDRV-COPY-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-005]]
+===== UT-USBDRV-COPY-005 - Multi-chunk and exact-chunk files copied
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-005
+|Design reference |usb_drive.c - USBDRIVE_CHUNK_SIZE
+|Objective |Verify copying across chunk boundaries.
+|Preconditions |Files of 20000 bytes and exactly 8192 bytes.
+|Test Steps |Plug in; allow; process 5. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE; 2 done; both identical. +
+`s_results[]` entry `UT-USBDRV-COPY-005` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-006]]
+===== UT-USBDRV-COPY-006 - Copy spread over cycles by the 40 ms budget
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-006
+|Design reference |usb_drive.c - USBDRIVE_BUDGET_MS
+|Objective |Verify that a large file is copied over several SD task cycles.
+|Preconditions |150000-byte file; each time read advances 10 ms.
+|Test Steps |Plug in; allow; process until no longer RUNNING. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Still RUNNING with part of the bytes after one copy cycle; more than one further cycle needed; DONE; identical; copy time recorded. +
+`s_results[]` entry `UT-USBDRV-COPY-006` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-007]]
+===== UT-USBDRV-COPY-007 - Re-opening Screen 18 copies the new session
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-007
+|Design reference |usb_drive.c - APP_UsbDrive_Process()
+|Objective |Verify that leaving and re-entering Screen 18 with the stick still in starts a new copy that skips old files.
+|Preconditions |One file copied (DONE).
+|Test Steps |Disallow; add a new file; allow; process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE; 1 skipped; 1 done; the new file identical. +
+`s_results[]` entry `UT-USBDRV-COPY-007` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-COPY-008]]
+===== UT-USBDRV-COPY-008 - No new copy while Screen 18 stays open after DONE
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-COPY-008
+|Design reference |usb_drive.c - APP_UsbDrive_Process()
+|Objective |Verify that DONE is kept until the screen is opened again.
+|Preconditions |Copy DONE; still allowed.
+|Test Steps |Add a file; process 20. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |State DONE; no further mkdir; the new file not copied. +
+`s_results[]` entry `UT-USBDRV-COPY-008` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Errors
+
+[[UT-USBDRV-FAIL-001]]
+===== UT-USBDRV-FAIL-001 - Folder creation error fails the copy
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-FAIL-001
+|Design reference |usb_drive.c - UsbDrive_StartCopy()
+|Objective |Verify the f_mkdir failure path.
+|Preconditions |f_mkdir fails with FR_WRITE_PROTECTED.
+|Test Steps |Plug in; allow; process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |FAILED; fs_error FR_WRITE_PROTECTED; no file on the stick. +
+`s_results[]` entry `UT-USBDRV-FAIL-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-FAIL-002]]
+===== UT-USBDRV-FAIL-002 - SD folder read error fails the copy
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-FAIL-002
+|Design reference |usb_drive.c - UsbDrive_StartCopy()
+|Objective |Verify the f_opendir failure path.
+|Preconditions |f_opendir fails with FR_NOT_READY.
+|Test Steps |Plug in; allow; process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |FAILED; fs_error FR_NOT_READY. +
+`s_results[]` entry `UT-USBDRV-FAIL-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-FAIL-003]]
+===== UT-USBDRV-FAIL-003 - Stick file create error fails the copy and closes the SD file
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-FAIL-003
+|Design reference |usb_drive.c - UsbDrive_CopySome()
+|Objective |Verify the destination open failure path.
+|Preconditions |List built; the second open (destination) fails with FR_DENIED.
+|Test Steps |Process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |FAILED; fs_error FR_DENIED; no file left open. +
+`s_results[]` entry `UT-USBDRV-FAIL-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-FAIL-004]]
+===== UT-USBDRV-FAIL-004 - Stick full fails the copy
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-FAIL-004
+|Design reference |usb_drive.c - UsbDrive_CopySome()
+|Objective |Verify the short-write (stick full) path.
+|Preconditions |20000-byte file; 10000 bytes free on the stick.
+|Test Steps |Plug in; allow; process 5. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |FAILED; fs_error FR_DENIED; no file left open. +
+`s_results[]` entry `UT-USBDRV-FAIL-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-FAIL-005]]
+===== UT-USBDRV-FAIL-005 - Missing SD file skipped, copy ends FAILED
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-FAIL-005
+|Design reference |usb_drive.c - UsbDrive_Finish()
+|Objective |Verify that one unreadable source file does not stop the others and makes the result FAILED.
+|Preconditions |Two files; the first source open fails with FR_NO_FILE.
+|Test Steps |Process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |1 failed, 1 done; state FAILED. +
+`s_results[]` entry `UT-USBDRV-FAIL-005` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-FAIL-006]]
+===== UT-USBDRV-FAIL-006 - Size check failure counted as failed
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-FAIL-006
+|Design reference |usb_drive.c - UsbDrive_CopySome()
+|Objective |Verify the size check after closing the copied file.
+|Preconditions |One file; f_stat fails after the copy.
+|Test Steps |Process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |0 done, 1 failed; state FAILED. +
+`s_results[]` entry `UT-USBDRV-FAIL-006` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Cancel and Removal
+
+[[UT-USBDRV-CANCEL-001]]
+===== UT-USBDRV-CANCEL-001 - Cancel keeps finished files and deletes the half file
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-CANCEL-001
+|Design reference |usb_drive.h - APP_UsbDrive_RequestCancel()
+|Objective |Verify cancel during a copy.
+|Preconditions |Files of 100 and 150000 bytes; copy RUNNING in the large file.
+|Test Steps |Request cancel; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CANCELLED; the small file identical on the stick; the large file not on the stick; no file left open. +
+`s_results[]` entry `UT-USBDRV-CANCEL-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-CANCEL-002]]
+===== UT-USBDRV-CANCEL-002 - Cancel outside a copy is ignored
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-CANCEL-002
+|Design reference |usb_drive.h - APP_UsbDrive_RequestCancel()
+|Objective |Verify that a cancel request before the copy has no effect on it.
+|Preconditions |Stick mounted, not copying.
+|Test Steps |Request cancel; allow; process 3. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE; file identical. +
+`s_results[]` entry `UT-USBDRV-CANCEL-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-ABORT-001]]
+===== UT-USBDRV-ABORT-001 - Disconnect mid-copy: ABORTED, stick not written
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-ABORT-001
+|Design reference |usb_drive.c - UsbDrive_StopOnRemoval()
+|Objective |Verify the stick-pulled path when the disconnect flag drops first.
+|Preconditions |Copy RUNNING in a 150000-byte file.
+|Test Steps |Connected false; process; then ready false; process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |ABORTED; exactly one close (the SD file only); after ready drops: unmounted, still ABORTED. +
+`s_results[]` entry `UT-USBDRV-ABORT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-ABORT-002]]
+===== UT-USBDRV-ABORT-002 - Re-insert after abort replaces the half file
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-ABORT-002
+|Design reference |usb_drive.c - UsbDrive_Mount()
+|Objective |Verify recovery after a pulled stick.
+|Preconditions |Copy RUNNING; stick pulled (ready and connected false).
+|Test Steps |Process; plug in again (Screen 18 still open); process 10. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |ABORTED and unmounted; mounted again; DONE; file identical. +
+`s_results[]` entry `UT-USBDRV-ABORT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-USBDRV-ABORT-003]]
+===== UT-USBDRV-ABORT-003 - Stick pulled inside a copy cycle
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-ABORT-003
+|Design reference |usb_drive.c - UsbDrive_IsStickGone()
+|Objective |Verify that removal is detected within the copy loop.
+|Preconditions |Copy list built; the stick disconnects after 5 time reads.
+|Test Steps |Process once. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |ABORTED. +
+`s_results[]` entry `UT-USBDRV-ABORT-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+==== Status
+
+[[UT-USBDRV-STATUS-001]]
+===== UT-USBDRV-STATUS-001 - Status snapshot matches the copy
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-USBDRV-STATUS-001
+|Design reference |usb_drive.h - APP_UsbDrive_GetCopyStatus()
+|Objective |Verify every field of the snapshot and NULL handling.
+|Preconditions |One 1234-byte file copied.
+|Test Steps |Get the status; get the status with NULL. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |DONE, 1 total, 1 done, 0 skipped, 0 failed, 1234 bytes total and done, error 0; NULL call returns without effect. +
+`s_results[]` entry `UT-USBDRV-STATUS-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Module: canopen_app and CO_driver - CANopen Start-up and Target Driver
+
+==== Overview
+
+`canopen_app` runs the CANopenNode v4 init / reset-communication sequence for Node 0x10. `CO_driver.c` is the CANopenNode target driver: it maps each CANopenNode RX object to its own hardware filter through the PIF CAN interface (16 slots, dispatched by trampolines), sends through the PIF transmit with overflow handling, and implements the CANopenNode locks with `mw_osif`. The test builds the real CANopenNode v4 library and the generated `OD.c` for the host. The PIF CAN interface (`MW_CAN_If`) is a fake that behaves like `mw_can.c` (16 filters, no registration after start), and `mw_osif` is a fake. Only the Cortex-M `dmb` barrier is replaced, by a host wrapper header that includes the real `CO_driver_target.h`.
+
+[cols="1,3"]
+|===
+|Code under test |`CM7/app/canopen/canopen_app.c, CM7/src/canopen/CO_driver.c`
+|Test program |`CM7/test/host_unit/src/test_canopen.c`
+|Result |21 run, 20 passed, 1 failed
+|===
+
+==== canopen_app
+
+[[UT-COAPP-INIT-001]]
+===== UT-COAPP-INIT-001 - Init brings the node onto the bus
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-INIT-001
+|Design reference |canopen_app.h - APP_CanOpen_Init()
+|Objective |Verify a successful start-up.
+|Preconditions |Fake CAN interface fresh (as after MW_CAN_Init()).
+|Test Steps |Call `APP_CanOpen_Init()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CO_ERROR_NO; CANOPEN_co set; stage NONE; info 0; CAN started once; CANnormal true. +
+`s_results[]` entry `UT-COAPP-INIT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-INIT-002]]
+===== UT-COAPP-INIT-002 - Filters for the Node 0x04 interface registered
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-INIT-002
+|Design reference |canopen_app.c - APP_CanOpen_Init()
+|Objective |Verify that the receive filters needed for the interface with Node 0x04 are registered as exact-match filters, within the 16 available.
+|Preconditions |After a successful init.
+|Test Steps |Inspect the registered filters. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Exact filters for 0x000 (NMT), 0x610 (SDO server), 0x584 (SDO client response), 0x704 (heartbeat) and 0x181 (RPDO1); at most 16 filters. +
+`s_results[]` entry `UT-COAPP-INIT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-INIT-003]]
+===== UT-COAPP-INIT-003 - Boot-up message sent on the first process call
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-INIT-003
+|Design reference |CANopenNode NMT - boot-up
+|Objective |Verify the boot-up frame.
+|Preconditions |After a successful init.
+|Test Steps |Run `CO_process()` for 1 ms. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |A frame 0x710, DLC 1, data 0x00 is sent. +
+`s_results[]` entry `UT-COAPP-INIT-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-INIT-004]]
+===== UT-COAPP-INIT-004 - Autonomous Operational and 500 ms heartbeat
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-INIT-004
+|Design reference |canopen_app.c - APP_CANOPEN_NMT_CONTROL
+|Objective |Verify that the node goes Operational by itself and produces its heartbeat every 500 ms.
+|Preconditions |After a successful init.
+|Test Steps |Run `CO_process()` for 1600 ms in 1 ms steps. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |NMT state OPERATIONAL; 3 or 4 heartbeats 0x710; the last carries 0x05. +
+`s_results[]` entry `UT-COAPP-INIT-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-ERR-001]]
+===== UT-COAPP-ERR-001 - Refused filter fails the init before start
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-ERR-001
+|Design reference |canopen_app.h - CANOPEN_last_err_stage
+|Objective |Verify the error path when the CAN interface refuses a filter.
+|Preconditions |The first filter registration fails.
+|Test Steps |Call `APP_CanOpen_Init()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Error returned; stage not NONE; CAN not started. +
+`s_results[]` entry `UT-COAPP-ERR-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-ERR-002]]
+===== UT-COAPP-ERR-002 - CAN start failure leaves the node off the bus
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-ERR-002
+|Design reference |driver - CO_CANsetNormalMode()
+|Objective |Verify that a failing CAN start does not set normal mode.
+|Preconditions |CAN start fails.
+|Test Steps |Call `APP_CanOpen_Init()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CO_ERROR_NO (init itself completes); CANnormal false. +
+`s_results[]` entry `UT-COAPP-ERR-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-ERR-003]]
+===== UT-COAPP-ERR-003 - Driver init failure reported at stage CAN_INIT
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-ERR-003
+|Design reference |canopen_app.h - APP_CANOPEN_STAGE_CAN_INIT
+|Objective |Verify the CAN_INIT stage report and that the CO object is reused.
+|Preconditions |Successful boot; mutex creation then fails.
+|Test Steps |Call `APP_CanOpen_Init()` again. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CO_ERROR_OUT_OF_MEMORY; stage CAN_INIT; CANOPEN_co unchanged. +
+`s_results[]` entry `UT-COAPP-ERR-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-COAPP-RESET-001]]
+===== UT-COAPP-RESET-001 - Communication reset keeps the node on the bus (ORPT-164)
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-COAPP-RESET-001
+|Design reference |canopen_task.c - CO_RESET_COMM
+|Objective |Verify NMT reset communication: the CANopen main task re-runs only `APP_CanOpen_Init()` while the bus is started.
+|Preconditions |Successful boot; 10 ms of operation; CAN interface started (filters can no longer be registered, as in mw_can.c).
+|Test Steps |Call `APP_CanOpen_Init()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CO object unchanged; CO_ERROR_NO; stage NONE; CANnormal true. +
+`s_results[]` entry `UT-COAPP-RESET-001` has `status = UT_STATUS_PASS`.
+|Actual Results |FAIL. `APP_CanOpen_Init()` returned CO_ERROR_OUT_OF_MEMORY (-2) with CANOPEN_last_err_stage = 3 (CANOPEN_INIT); CANnormal = false, so the node is left off the bus. Cause: the reset re-runs `CO_CANopenInit()`, which registers its RX filters again, but the CAN interface refuses filters once FDCAN1 is started (`mw_can.c` Can_RegisterRxFilter). Known defect ORPT-164.
+|===
+
+==== CO_driver
+
+[[UT-CODRV-INIT-001]]
+===== UT-CODRV-INIT-001 - Module init state
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-INIT-001
+|Design reference |CO_driver.c - CO_CANmodule_init()
+|Objective |Verify the CAN module state after init.
+|Preconditions |Arrays of 20 RX and 4 TX objects.
+|Test Steps |Call `CO_CANmodule_init()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CO_ERROR_NO; CANnormal false; RX filters in use; first TX message flag set; TX count and error status 0; every RX object unused (mask 0xFFFF, no callback). +
+`s_results[]` entry `UT-CODRV-INIT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-INIT-002]]
+===== UT-CODRV-INIT-002 - Module init argument and mutex errors
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-INIT-002
+|Design reference |CO_driver.c - CO_CANmodule_init()
+|Objective |Verify the init error returns.
+|Preconditions |None.
+|Test Steps |Init with NULL module, NULL RX array, NULL TX array; init with mutex creation failing. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |ILLEGAL_ARGUMENT x3; OUT_OF_MEMORY. +
+`s_results[]` entry `UT-CODRV-INIT-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-NORM-001]]
+===== UT-CODRV-NORM-001 - Normal mode only after a successful CAN start
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-NORM-001
+|Design reference |CO_driver.c - CO_CANsetNormalMode()
+|Objective |Verify normal mode, disable, and the failure cases.
+|Preconditions |Module initialised.
+|Test Steps |Set normal; disable; disable(NULL); set normal with start failing; set normal without a CAN interface. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Normal true with one start; false after disable; no crash on NULL; stays false on start failure and without interface. +
+`s_results[]` entry `UT-CODRV-NORM-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-RXI-001]]
+===== UT-CODRV-RXI-001 - RX object identifier, RTR flag and hardware filter
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-RXI-001
+|Design reference |CO_driver.c - CO_CANrxBufferInit()
+|Objective |Verify the stored ident/mask and the filter handed to the PIF.
+|Preconditions |Module initialised.
+|Test Steps |Register ident 0x1F10 (11-bit 0x710), mask 0x7FF, rtr true. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |CO_ERROR_NO; ident 0x710 \| 0x800; mask 0x7FF \| 0x800; one PIF filter 0x710/0x7FF. +
+`s_results[]` entry `UT-CODRV-RXI-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-RXI-002]]
+===== UT-CODRV-RXI-002 - RX object argument checks
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-RXI-002
+|Design reference |CO_driver.c - CO_CANrxBufferInit()
+|Objective |Verify argument validation before any filter registration.
+|Preconditions |Module initialised.
+|Test Steps |NULL object; NULL callback; index 20 (out of range); NULL module. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |ILLEGAL_ARGUMENT for all; no filter registered. +
+`s_results[]` entry `UT-CODRV-RXI-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-RXI-003]]
+===== UT-CODRV-RXI-003 - Seventeenth RX filter refused
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-RXI-003
+|Design reference |CO_driver_target.h - CODRV_RX_FILTER_MAX
+|Objective |Verify the 16-slot limit of the driver map.
+|Preconditions |Module initialised.
+|Test Steps |Register 16 RX objects, then a 17th. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |16 x CO_ERROR_NO; the 17th CO_ERROR_OUT_OF_MEMORY. +
+`s_results[]` entry `UT-CODRV-RXI-003` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-RXI-004]]
+===== UT-CODRV-RXI-004 - Refused filter frees its slot
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-RXI-004
+|Design reference |CO_driver.c - CO_CANrxBufferInit()
+|Objective |Verify that a filter refused by the PIF does not shift the slot map.
+|Preconditions |First PIF registration fails.
+|Test Steps |Register an RX object (fails), register another, receive its frame. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |OUT_OF_MEMORY, then CO_ERROR_NO; the frame reaches the second object's callback. +
+`s_results[]` entry `UT-CODRV-RXI-004` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-RX-001]]
+===== UT-CODRV-RX-001 - Received frame reaches its CANopenNode object
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-RX-001
+|Design reference |CO_driver.c - CoDrv_RxDispatch()
+|Objective |Verify the slot-to-object dispatch through the trampolines.
+|Preconditions |RX objects at indexes 3 (0x181) and 7 (0x281) with different objects.
+|Test Steps |Receive 0x281, then 0x181. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Callback with the index-7 object and ident 0x281, then with the index-3 object. +
+`s_results[]` entry `UT-CODRV-RX-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-TX-001]]
+===== UT-CODRV-TX-001 - TX buffer and send
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-TX-001
+|Design reference |CO_driver.c - CO_CANtxBufferInit(), CO_CANsend()
+|Objective |Verify the TX buffer set-up, its bounds check and a send through the PIF under the send lock.
+|Preconditions |Module initialised.
+|Test Steps |Init TX buffer 0 (ident 0x1F90, 4 bytes) and index 4; send. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Buffer 0 returned with ident 0x790, DLC 4; index 4 returns NULL; CO_ERROR_NO; PIF frame 0x790, DLC 4, data intact; one critical section, balanced; first TX flag cleared. +
+`s_results[]` entry `UT-CODRV-TX-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-TX-002]]
+===== UT-CODRV-TX-002 - TX overflow reported and cleared
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-TX-002
+|Design reference |CO_driver.c - CO_CANsend()
+|Objective |Verify the overflow path and that the overflow report clears once the frame is sent.
+|Preconditions |PIF transmit fails, then succeeds.
+|Test Steps |Send; send again. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |TX_OVERFLOW with buffer full, TX count 1, overflow status bit; then CO_ERROR_NO with buffer free, TX count 0, overflow bit cleared. +
+`s_results[]` entry `UT-CODRV-TX-002` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-SYNC-001]]
+===== UT-CODRV-SYNC-001 - Pending synchronous PDO dropped and reported late
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-SYNC-001
+|Design reference |CO_driver.c - CO_CANclearPendingSyncPDOs()
+|Objective |Verify that only waiting synchronous PDOs are dropped.
+|Preconditions |One synchronous and one asynchronous buffer waiting (transmit failed).
+|Test Steps |Call `CO_CANclearPendingSyncPDOs()`. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |Synchronous buffer freed; asynchronous still full; TX count 1; PDO_LATE status bit. +
+`s_results[]` entry `UT-CODRV-SYNC-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-LOCK-001]]
+===== UT-CODRV-LOCK-001 - OD and EMCY locks
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-LOCK-001
+|Design reference |CO_driver.c - CO_LOCK_OD(), CO_LOCK_EMCY()
+|Objective |Verify that the OD lock uses the mutex and the EMCY lock the critical section.
+|Preconditions |Module initialised.
+|Test Steps |Lock and unlock the OD; lock and unlock EMCY. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |One mutex lock and unlock; one critical section, balanced. +
+`s_results[]` entry `UT-CODRV-LOCK-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+[[UT-CODRV-NMT-001]]
+===== UT-CODRV-NMT-001 - NMT Stop / Start through the driver RX path
+
+[cols="1,3",options="header"]
+|===
+|Field |Value
+|Test ID |UT-CODRV-NMT-001
+|Design reference |CO_driver.c + CANopenNode NMT
+|Objective |Verify that NMT commands received through the driver's filter dispatch change the node state.
+|Preconditions |Node booted and Operational.
+|Test Steps |Receive NMT Stop (0x02, node 0x10); process; receive NMT Start (0x01); process. +
+Executed by the <<automated-test-execution-procedure,Automated Test Execution Procedure>>.
+|Expected Results |STOPPED, then OPERATIONAL. +
+`s_results[]` entry `UT-CODRV-NMT-001` has `status = UT_STATUS_PASS`.
+|Actual Results |PASS. `s_results[]` entry has `status = UT_STATUS_PASS` (evidence file, run of 2026-10-28).
+|===
+
+=== Test Traceability Matrix
+
+The SRS requirement IDs for the display firmware are not yet allocated (see <<open-items,Open Items>>, OI-UT-001);
+each test case is traced to the interface function or design element it verifies.
+
+[cols="2,3,3,1,1",options="header"]
+|===
+|Test ID |Title |Design reference |Execution |Result
+|UT-MWCAN-INIT-001 |Init rejects all unfiltered frames |mw_can.h - MW_CAN_Init() |Automated (host) |PASS
+|UT-MWCAN-INIT-002 |Init reports a HAL global filter failure |mw_can.h - MW_CAN_Init() |Automated (host) |PASS
+|UT-MWCAN-INIT-003 |Init clears filters, bus-off count and started state |mw_can.h - MW_CAN_Init() |Automated (host) |PASS
+|UT-MWCAN-FILT-001 |Filter registered as standard-ID mask filter to FIFO0 |can_if.h - PIF_CAN_RegisterRxFilterFn |Automated (host) |PASS
+|UT-MWCAN-FILT-002 |NULL callback rejected |can_if.h - PIF_CAN_RegisterRxFilterFn |Automated (host) |PASS
+|UT-MWCAN-FILT-003 |Seventeenth filter rejected |mw_can.h - MW_CAN_RX_FILTER_MAX |Automated (host) |PASS
+|UT-MWCAN-FILT-004 |HAL filter failure does not consume a slot |can_if.h - PIF_CAN_RegisterRxFilterFn |Automated (host) |PASS
+|UT-MWCAN-FILT-005 |No registration after start |can_if.h - PIF_CAN_StartFn |Automated (host) |PASS
+|UT-MWCAN-START-001 |Start arms RX FIFO0 and bus-off notifications |mw_can.h - MW_CAN_Start() |Automated (host) |PASS
+|UT-MWCAN-START-002 |Second start is a no-op |mw_can.h - MW_CAN_Start() |Automated (host) |PASS
+|UT-MWCAN-START-003 |Start failures reported, not marked started |mw_can.h - MW_CAN_Start() |Automated (host) |PASS
+|UT-MWCAN-TX-001 |Standard frame transmitted as classical CAN |can_if.h - PIF_CAN_TransmitFn |Automated (host) |PASS
+|UT-MWCAN-TX-002 |Extended frame transmitted with extended ID type |can_if.h - PIF_CAN_TransmitFn |Automated (host) |PASS
+|UT-MWCAN-TX-003 |NULL frame and DLC > 8 rejected |can_if.h - PIF_CAN_TransmitFn |Automated (host) |PASS
+|UT-MWCAN-TX-004 |Full hardware TX FIFO reported, not logged |can_if.h - PIF_CAN_TransmitFn |Automated (host) |PASS
+|UT-MWCAN-TX-005 |Sent frame reported to the monitor as TX |mw_can.h - MW_CAN_SetMonitor() |Automated (host) |PASS
+|UT-MWCAN-TX-006 |DLC 0 to 8 mapped to the HAL DLC codes |mw_can.c - Can_DlcBytesToFdcanCode() |Automated (host) |PASS
+|UT-MWCAN-RX-001 |Frame routed to the callback of its filter |mw_can.c - HAL_FDCAN_RxFifo0Callback() |Automated (host) |PASS
+|UT-MWCAN-RX-002 |All pending frames drained in one interrupt |mw_can.c - HAL_FDCAN_RxFifo0Callback() |Automated (host) |PASS
+|UT-MWCAN-RX-003 |Interrupt work bounded to 16 frames |mw_can.c - MW_CAN_RX_FIFO0_DEPTH |Automated (host) |PASS
+|UT-MWCAN-RX-004 |Unknown filter index skipped, monitor still sees the frame |mw_can.c - HAL_FDCAN_RxFifo0Callback() |Automated (host) |PASS
+|UT-MWCAN-RX-005 |No read without the new-message flag |mw_can.c - HAL_FDCAN_RxFifo0Callback() |Automated (host) |PASS
+|UT-MWCAN-RX-006 |HAL read error ends the drain loop |mw_can.c - HAL_FDCAN_RxFifo0Callback() |Automated (host) |PASS
+|UT-MWCAN-RX-007 |Received frames reported to the monitor as RX |mw_can.h - MW_CAN_SetMonitor() |Automated (host) |PASS
+|UT-MWCAN-RX-008 |Received DLC 8 and 0 kept (DLC regression) |mw_can.c - Can_FdcanCodeToDlcBytes() |Automated (host) |PASS
+|UT-MWCAN-ERR-001 |Bus-off events counted |mw_can.h - MW_CAN_GetBusOffCount() |Automated (host) |PASS
+|UT-MWCAN-ERR-002 |Raw error status read and cleared |mw_can.h - MW_CAN_GetRawErrorStatus(), MW_CAN_ClearErrorStatus() |Automated (host) |PASS
+|UT-MWCAN-MON-001 |Monitor survives Init and can be removed |mw_can.h - MW_CAN_SetMonitor() |Automated (host) |PASS
+|UT-MWCAN-IF-001 |MW_CAN_If wired to the module functions |mw_can.h - MW_CAN_If |Automated (host) |PASS
+|UT-MWOSIF-MTX-001 |Mutex created |mw_osif.h - MW_OSIF_MutexCreate() |Automated (host) |PASS
+|UT-MWOSIF-MTX-002 |Mutex creation failure reported |mw_osif.h - MW_OSIF_MutexCreate() |Automated (host) |PASS
+|UT-MWOSIF-MTX-003 |Lock passes the timeout and reports a timeout |mw_osif.h - MW_OSIF_MutexLock() |Automated (host) |PASS
+|UT-MWOSIF-MTX-004 |Unlock result reported |mw_osif.h - MW_OSIF_MutexUnlock() |Automated (host) |PASS
+|UT-MWOSIF-CRIT-001 |Critical section maps to FreeRTOS |mw_osif.h - MW_OSIF_EnterCritical(), MW_OSIF_ExitCritical() |Automated (host) |PASS
+|UT-MWOSIF-TIME-001 |Tick in ms from the HAL tick |time_if.h - PIF_TIME_GetMsFn |Automated (host) |PASS
+|UT-MWOSIF-TIME-002 |Fixed-rate delay has no drift |mw_osif.h - MW_OSIF_DelayUntil() |Automated (host) |PASS
+|UT-MWOSIF-TIME-003 |Delay passes the time to the RTOS |time_if.h - PIF_TIME_DelayMsFn |Automated (host) |PASS
+|UT-MWOSIF-IRQ-001 |Interrupt lock returns previous state and nests |irq_if.h - PIF_IRQ_LockFn, PIF_IRQ_UnlockFn |Automated (host) |PASS
+|UT-MWOSIF-IRQ-002 |Memory barrier issues DMB |irq_if.h - PIF_IRQ_MemoryBarrierFn |Automated (host) |PASS
+|UT-MWOSIF-IF-001 |TimeIf and IrqIf wired to the module |mw_osif.h - MW_OSIF_TimeIf, MW_OSIF_IrqIf |Automated (host) |PASS
+|UT-MWSD-DET-001 |Card detect follows the BSP detect pin |sd_if.h - PIF_SD_IsDetectedFn |Automated (host) |PASS
+|UT-MWSD-START-001 |Card started with the board settings |mw_sd.h - MW_SD_Start() |Automated (host) |PASS
+|UT-MWSD-START-002 |Capacity above 4 GB computed without overflow |mw_sd.h - MW_SD_Start() |Automated (host) |PASS
+|UT-MWSD-START-003 |Start failure returns the HAL error and stops the card |mw_sd.h - MW_SD_Start() |Automated (host) |PASS
+|UT-MWSD-START-004 |Card info failure stops the card |mw_sd.h - MW_SD_Start() |Automated (host) |PASS
+|UT-MWSD-STOP-001 |Stop de-initialises the SDMMC |sd_if.h - PIF_SD_StopFn |Automated (host) |PASS
+|UT-MWSD-IF-001 |MW_SD_If wired to the module |mw_sd.h - MW_SD_If |Automated (host) |PASS
+|UT-MWUSB-RDY-001 |Ready only in APPLICATION_READY |usb_if.h - PIF_USB_IsReadyFn |Automated (host) |PASS
+|UT-MWUSB-CON-001 |Connected follows the host connect flag |usb_if.h - PIF_USB_IsConnectedFn |Automated (host) |PASS
+|UT-MWUSB-IF-001 |MW_USB_If wired to the module |mw_usb.h - MW_USB_If |Automated (host) |PASS
+|UT-CANLOG-INIT-001 |Init installs the frame monitor |can_log.h - APP_CanLog_Init() |Automated (host) |PASS
+|UT-CANLOG-QUEUE-001 |Queue entry published under lock after a barrier |can_log.h - APP_CanLog_OnFrame() |Automated (host) |PASS
+|UT-CANLOG-QUEUE-002 |Overflow counted and DROPPED line written at the gap |can_log.h - CANLOG_dropped_count |Automated (host) |PASS
+|UT-CANLOG-QUEUE-003 |DLC above 8 clamped to 8 |can_log.h - APP_CanLog_OnFrame() |Automated (host) |PASS
+|UT-CANLOG-QUEUE-004 |Without a card the queue is emptied without writing |can_log.h - APP_CanLog_Process() |Automated (host) |PASS
+|UT-CANLOG-IDLE-001 |Card ready opens SESSION_0000_IDLE_1.CSV |can_log.h - APP_CanLog_CardReady() |Automated (host) |PASS
+|UT-CANLOG-IDLE-002 |IDLE number continues after the newest session |can_log.c - CanLog_NextIdleNumber() |Automated (host) |PASS
+|UT-CANLOG-IDLE-003 |Node 0x04 in IDLE logs to the IDLE file only |can_log.c - CanLog_WaitForSession() |Automated (host) |PASS
+|UT-CANLOG-SESS-001 |Leaving IDLE opens a session file with pre-roll |can_log.c - CanLog_OpenSession() |Automated (host) |PASS
+|UT-CANLOG-SESS-002 |Return to IDLE writes END and opens the next IDLE file |can_log.c - CanLog_EndSession() |Automated (host) |PASS
+|UT-CANLOG-SESS-003 |Power-on mid-session continues as _PART2 |can_log.c - CanLog_HasEndLine() |Automated (host) |PASS
+|UT-CANLOG-SESS-004 |Finished session not continued |can_log.c - CanLog_OpenSession() |Automated (host) |PASS
+|UT-CANLOG-SESS-005 |IDLE seen first starts a new session |can_log.c - CanLog_WaitForSession() |Automated (host) |PASS
+|UT-CANLOG-SESS-006 |Pre-roll limited to the last 64 frames |can_log.c - CANLOG_PREROLL_LEN |Automated (host) |PASS
+|UT-CANLOG-SESS-007 |No card: no session file |can_log.c - CanLog_WaitForSession() |Automated (host) |PASS
+|UT-CANLOG-LINE-001 |RX line text and CRC-16/CCITT-FALSE |can_log.h - file format |Automated (host) |PASS
+|UT-CANLOG-LINE-002 |TX direction, extended ID and empty data field |can_log.h - file format |Automated (host) |PASS
+|UT-CANLOG-LINE-003 |CRC chained over 200 mixed lines |can_log.c - CanLog_AddLine() |Automated (host) |PASS
+|UT-CANLOG-SAVE-001 |File saved every 2 s |can_log.c - CANLOG_SYNC_PERIOD_MS |Automated (host) |PASS
+|UT-CANLOG-SAVE-002 |Full 4 KB block written at once |can_log.c - CANLOG_BLOCK_SIZE |Automated (host) |PASS
+|UT-CANLOG-FAIL-001 |Write error stops logging until the next insert |can_log.h - CANLOG_fs_error |Automated (host) |PASS
+|UT-CANLOG-FAIL-002 |Card full reported as FR_DENIED |can_log.c - CanLog_WriteBlock() |Automated (host) |PASS
+|UT-CANLOG-FAIL-003 |File open error reported |can_log.c - CanLog_OpenIdle() |Automated (host) |PASS
+|UT-CANLOG-FAIL-004 |Save (sync) error stops logging |can_log.c - CanLog_Save() |Automated (host) |PASS
+|UT-CANLOG-REM-001 |Card removed: no open file |can_log.h - APP_CanLog_CardRemoved() |Automated (host) |PASS
+|UT-CANLOG-NAME-001 |Open file name: argument checks and truncation |can_log.h - APP_CanLog_GetOpenFileName() |Automated (host) |PASS
+|UT-SDCARD-DET-001 |Card present at start-up is started and mounted |sd_card.h - APP_SdCard_Task() |Automated (host) |PASS
+|UT-SDCARD-DET-002 |Slot checked every 25 cycles |sd_card.c - SDCARD_DETECT_EVERY_CYCLES |Automated (host) |PASS
+|UT-SDCARD-DET-003 |Card that stays in is started once |sd_card.h - APP_SdCard_Task() |Automated (host) |PASS
+|UT-SDCARD-START-001 |Start failure reported, card not used |sd_card.h - APP_SDCARD_STATE_INIT_FAILED |Automated (host) |PASS
+|UT-SDCARD-MOUNT-001 |Mount failure reported, card stopped |sd_card.h - APP_SDCARD_STATE_MOUNT_FAILED |Automated (host) |PASS
+|UT-SDCARD-MOUNT-002 |Free-space read failure does not block the card |sd_card.c - SdCard_Start() |Automated (host) |PASS
+|UT-SDCARD-REM-001 |Removal stops logging, unmounts and stops the card |sd_card.c - SdCard_Stop() |Automated (host) |PASS
+|UT-SDCARD-REM-002 |Re-insert starts the card again |sd_card.h - APP_SdCard_Task() |Automated (host) |PASS
+|UT-SDCARD-REM-003 |Removing a card that never mounted is not unmounted |sd_card.c - SdCard_Stop() |Automated (host) |PASS
+|UT-SDCARD-PROC-001 |Logger then USB copy every 20 ms |sd_card.h - APP_SdCard_Task() |Automated (host) |PASS
+|UT-SDCARD-PROC-002 |Card pulled between detect checks: card_ok false at once |sd_card.c - APP_SdCard_Task() |Automated (host) |PASS
+|UT-SDCARD-PROC-003 |No card: logger and USB copy still run |sd_card.h - APP_SdCard_Task() |Automated (host) |PASS
+|UT-SDCARD-READY-001 |IsReady only in READY |sd_card.h - APP_SdCard_IsReady() |Automated (host) |PASS
+|UT-USBDRV-MNT-001 |Stick mounted after 25 ready cycles |usb_drive.c - USBDRIVE_SETTLE_CYCLES |Automated (host) |PASS
+|UT-USBDRV-MNT-002 |Settle count restarts after a drop-out |usb_drive.h - APP_UsbDrive_Process() |Automated (host) |PASS
+|UT-USBDRV-MNT-003 |Mount failure reported once per insert |usb_drive.c - UsbDrive_Mount() |Automated (host) |PASS
+|UT-USBDRV-MNT-004 |Removal unmounts the stick |usb_drive.c - UsbDrive_Unmount() |Automated (host) |PASS
+|UT-USBDRV-ALLOW-001 |No copy outside Screen 18 |usb_drive.h - APP_UsbDrive_SetCopyAllowed() |Automated (host) |PASS
+|UT-USBDRV-ALLOW-002 |Waits for the SD card, then copies |usb_drive.h - APP_USBDRIVE_COPY_WAIT_SD |Automated (host) |PASS
+|UT-USBDRV-ALLOW-003 |Leaving Screen 18 while waiting returns to IDLE |usb_drive.h - APP_UsbDrive_SetCopyAllowed() |Automated (host) |PASS
+|UT-USBDRV-COPY-001 |All CSV files copied and identical |usb_drive.c - UsbDrive_CopySome() |Automated (host) |PASS
+|UT-USBDRV-COPY-002 |Only CSV files that may be copied |usb_drive.c - UsbDrive_StartCopy() |Automated (host) |PASS
+|UT-USBDRV-COPY-003 |Same-size files skipped, different size copied again |usb_drive.c - UsbDrive_StartCopy() |Automated (host) |PASS
+|UT-USBDRV-COPY-004 |Nothing to copy ends DONE at once |usb_drive.c - UsbDrive_StartCopy() |Automated (host) |PASS
+|UT-USBDRV-COPY-005 |Multi-chunk and exact-chunk files copied |usb_drive.c - USBDRIVE_CHUNK_SIZE |Automated (host) |PASS
+|UT-USBDRV-COPY-006 |Copy spread over cycles by the 40 ms budget |usb_drive.c - USBDRIVE_BUDGET_MS |Automated (host) |PASS
+|UT-USBDRV-COPY-007 |Re-opening Screen 18 copies the new session |usb_drive.c - APP_UsbDrive_Process() |Automated (host) |PASS
+|UT-USBDRV-COPY-008 |No new copy while Screen 18 stays open after DONE |usb_drive.c - APP_UsbDrive_Process() |Automated (host) |PASS
+|UT-USBDRV-FAIL-001 |Folder creation error fails the copy |usb_drive.c - UsbDrive_StartCopy() |Automated (host) |PASS
+|UT-USBDRV-FAIL-002 |SD folder read error fails the copy |usb_drive.c - UsbDrive_StartCopy() |Automated (host) |PASS
+|UT-USBDRV-FAIL-003 |Stick file create error fails the copy and closes the SD file |usb_drive.c - UsbDrive_CopySome() |Automated (host) |PASS
+|UT-USBDRV-FAIL-004 |Stick full fails the copy |usb_drive.c - UsbDrive_CopySome() |Automated (host) |PASS
+|UT-USBDRV-FAIL-005 |Missing SD file skipped, copy ends FAILED |usb_drive.c - UsbDrive_Finish() |Automated (host) |PASS
+|UT-USBDRV-FAIL-006 |Size check failure counted as failed |usb_drive.c - UsbDrive_CopySome() |Automated (host) |PASS
+|UT-USBDRV-CANCEL-001 |Cancel keeps finished files and deletes the half file |usb_drive.h - APP_UsbDrive_RequestCancel() |Automated (host) |PASS
+|UT-USBDRV-CANCEL-002 |Cancel outside a copy is ignored |usb_drive.h - APP_UsbDrive_RequestCancel() |Automated (host) |PASS
+|UT-USBDRV-ABORT-001 |Disconnect mid-copy: ABORTED, stick not written |usb_drive.c - UsbDrive_StopOnRemoval() |Automated (host) |PASS
+|UT-USBDRV-ABORT-002 |Re-insert after abort replaces the half file |usb_drive.c - UsbDrive_Mount() |Automated (host) |PASS
+|UT-USBDRV-ABORT-003 |Stick pulled inside a copy cycle |usb_drive.c - UsbDrive_IsStickGone() |Automated (host) |PASS
+|UT-USBDRV-STATUS-001 |Status snapshot matches the copy |usb_drive.h - APP_UsbDrive_GetCopyStatus() |Automated (host) |PASS
+|UT-COAPP-INIT-001 |Init brings the node onto the bus |canopen_app.h - APP_CanOpen_Init() |Automated (host) |PASS
+|UT-COAPP-INIT-002 |Filters for the Node 0x04 interface registered |canopen_app.c - APP_CanOpen_Init() |Automated (host) |PASS
+|UT-COAPP-INIT-003 |Boot-up message sent on the first process call |CANopenNode NMT - boot-up |Automated (host) |PASS
+|UT-COAPP-INIT-004 |Autonomous Operational and 500 ms heartbeat |canopen_app.c - APP_CANOPEN_NMT_CONTROL |Automated (host) |PASS
+|UT-COAPP-ERR-001 |Refused filter fails the init before start |canopen_app.h - CANOPEN_last_err_stage |Automated (host) |PASS
+|UT-COAPP-ERR-002 |CAN start failure leaves the node off the bus |driver - CO_CANsetNormalMode() |Automated (host) |PASS
+|UT-COAPP-ERR-003 |Driver init failure reported at stage CAN_INIT |canopen_app.h - APP_CANOPEN_STAGE_CAN_INIT |Automated (host) |PASS
+|UT-COAPP-RESET-001 |Communication reset keeps the node on the bus (ORPT-164) |canopen_task.c - CO_RESET_COMM |Automated (host) |FAIL (ORPT-164)
+|UT-CODRV-INIT-001 |Module init state |CO_driver.c - CO_CANmodule_init() |Automated (host) |PASS
+|UT-CODRV-INIT-002 |Module init argument and mutex errors |CO_driver.c - CO_CANmodule_init() |Automated (host) |PASS
+|UT-CODRV-NORM-001 |Normal mode only after a successful CAN start |CO_driver.c - CO_CANsetNormalMode() |Automated (host) |PASS
+|UT-CODRV-RXI-001 |RX object identifier, RTR flag and hardware filter |CO_driver.c - CO_CANrxBufferInit() |Automated (host) |PASS
+|UT-CODRV-RXI-002 |RX object argument checks |CO_driver.c - CO_CANrxBufferInit() |Automated (host) |PASS
+|UT-CODRV-RXI-003 |Seventeenth RX filter refused |CO_driver_target.h - CODRV_RX_FILTER_MAX |Automated (host) |PASS
+|UT-CODRV-RXI-004 |Refused filter frees its slot |CO_driver.c - CO_CANrxBufferInit() |Automated (host) |PASS
+|UT-CODRV-RX-001 |Received frame reaches its CANopenNode object |CO_driver.c - CoDrv_RxDispatch() |Automated (host) |PASS
+|UT-CODRV-TX-001 |TX buffer and send |CO_driver.c - CO_CANtxBufferInit(), CO_CANsend() |Automated (host) |PASS
+|UT-CODRV-TX-002 |TX overflow reported and cleared |CO_driver.c - CO_CANsend() |Automated (host) |PASS
+|UT-CODRV-SYNC-001 |Pending synchronous PDO dropped and reported late |CO_driver.c - CO_CANclearPendingSyncPDOs() |Automated (host) |PASS
+|UT-CODRV-LOCK-001 |OD and EMCY locks |CO_driver.c - CO_LOCK_OD(), CO_LOCK_EMCY() |Automated (host) |PASS
+|UT-CODRV-NMT-001 |NMT Stop / Start through the driver RX path |CO_driver.c + CANopenNode NMT |Automated (host) |PASS
+|===
+
+[[ut-defects]]
+=== Unit Test Defects
+
+[cols="1,2,1,3",options="header"]
+|===
+|Test case |Defect |Status |Finding
+|UT-COAPP-RESET-001 |<<ORPT-164,ORPT-164>> - CANopen communication reset (NMT 0x82) is not supported |Open (known) |FAIL. `APP_CanOpen_Init()` returned CO_ERROR_OUT_OF_MEMORY (-2) with CANOPEN_last_err_stage = 3 (CANOPEN_INIT); CANnormal = false, so the node is left off the bus. Cause: the reset re-runs `CO_CANopenInit()`, which registers its RX filters again, but the CAN interface refuses filters once FDCAN1 is started (`mw_can.c` Can_RegisterRxFilter). Known defect ORPT-164. The unit test now gives a quick check for the fix: it passes once the filters survive a communication reset (for example by keeping the registered filters, or re-initialising FDCAN1 before the reset).
+|===
+
+=== Test Effectiveness Check
+
+To confirm that the tests detect faults, three deliberate faults were put into temporary copies of the
+code under test (the firmware files were not changed), and the affected test programs were rebuilt and
+run against them on 2026-10-28:
+
+[cols="3,1,3",options="header"]
+|===
+|Injected fault |Failed test cases |Detected by
+|`mw_can.c`: received DLC shifted right by 16 (the earlier DLC defect) |3 |UT-MWCAN-RX-001, UT-MWCAN-RX-007, UT-MWCAN-RX-008
+|`usb_drive.c`: stick settle time 5 cycles instead of 25 |2 |UT-USBDRV-MNT-001, UT-USBDRV-MNT-002
+|`can_log.c`: CRC polynomial 0x1022 instead of 0x1021 |5 |UT-CANLOG-QUEUE-002, UT-CANLOG-SESS-001, UT-CANLOG-SESS-002, UT-CANLOG-LINE-001, UT-CANLOG-LINE-003
+|===
+
+All three faults were detected.
+
+[[ut-hardware-dependent]]
+=== Hardware-Dependent Behaviour
+
+The following behaviour cannot be verified with host unit tests. It is verified on target by the
+listed TS-DISP-002 test cases.
+
+[cols="2,3,2",options="header"]
+|===
+|Module |Behaviour |On-target coverage (TS-DISP-002)
+|mw_can |Real FDCAN1 bit timing, filters and interrupts on the bus |TC-CAN-001, TC-CAN-004, TC-CAN-005, TC-CAN-008, TC-CAN-009
+|mw_osif |Real FreeRTOS mutex blocking, task timing and interrupt masking |TC-CAN-001 (heartbeat period), TC-NFR-004
+|mw_sd, sd_card |Real SDMMC1/DMA transfers, card detect pin, real cards |TC-LOG-001, TC-LOG-004
+|can_log |Logging under real bus load over long sessions |TC-LOG-002, TC-LOG-007, TC-NFR-004
+|mw_usb, usb_drive |ST USB host stack, real sticks, removal during copy |TC-USB-002, TC-USB-003, TC-USB-004, TC-USB-005
+|canopen_app, CO_driver |CANopen exchange with Node 0x04 on the real bus |TC-CAN-003, TC-CAN-010, TC-CAN-016, TC-CAN-017
+|===
+
+== Approval
+
+[cols="1,2,2,1",options="header"]
+|===
+|Role |Name |Signature |Date
+|Author |Nashid P | |
+|Reviewer |Benin R | |
+|Approver | | |
+|===
